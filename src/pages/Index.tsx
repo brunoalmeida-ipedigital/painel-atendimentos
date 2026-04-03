@@ -35,6 +35,9 @@ const pipefyQuery = async (query: string, variables: Record<string, unknown> = {
 // ── Slack via Edge Function ──
 const slackNotify = async (payload: Record<string, unknown>) => {
   try {
+    // Somente envia notificações do Slack para o BRUNO
+    const analista = String(payload.analista || "").toUpperCase();
+    if (analista !== "BRUNO") return;
     await supabase.functions.invoke("slack-notify", { body: payload });
   } catch (e) {
     console.warn("Slack notify failed:", e);
