@@ -35,6 +35,9 @@ const pipefyQuery = async (query: string, variables: Record<string, unknown> = {
 // ── Slack via Edge Function ──
 const slackNotify = async (payload: Record<string, unknown>) => {
   try {
+    // Somente envia notificações do Slack para o BRUNO
+    const analista = String(payload.analista || "").toUpperCase();
+    if (analista !== "BRUNO") return;
     await supabase.functions.invoke("slack-notify", { body: payload });
   } catch (e) {
     console.warn("Slack notify failed:", e);
@@ -384,14 +387,7 @@ export default function Index() {
       const ma = !fAnalista || a.analista === fAnalista;
       return mb && mc && md && ma && !a.encerrado && !isAgendado;
     }).sort((a, b) => {
-      const isA = (a.etapa || "").toLowerCase().includes("analista selecionado");
-      const isB = (b.etapa || "").toLowerCase().includes("analista selecionado");
-      if (isA && !isB) return -1;
-      if (!isA && isB) return 1;
-      const pd: Record<string, number> = { Alta: 0, Média: 1 };
-      const pa = pd[a.dem] ?? 2;
-      const pb = pd[b.dem] ?? 2;
-      if (pa !== pb) return pa - pb;
+      // Prioridade por tempo: maior tempo aberto = maior prioridade (primeiro)
       return (a.abertoEm || 0) - (b.abertoEm || 0);
     });
   }, [data, busca, fClas, fDem, fAnalista]);
@@ -500,7 +496,7 @@ export default function Index() {
       </div>
 
       {/* Attendance list */}
-      <div className="space-y-1.5 mb-8">
+      <div className="space-y-1 mb-8">
         {filtered.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">Nenhum atendimento encontrado.</div>
         ) : (
