@@ -384,14 +384,7 @@ export default function Index() {
       const ma = !fAnalista || a.analista === fAnalista;
       return mb && mc && md && ma && !a.encerrado && !isAgendado;
     }).sort((a, b) => {
-      const isA = (a.etapa || "").toLowerCase().includes("analista selecionado");
-      const isB = (b.etapa || "").toLowerCase().includes("analista selecionado");
-      if (isA && !isB) return -1;
-      if (!isA && isB) return 1;
-      const pd: Record<string, number> = { Alta: 0, Média: 1 };
-      const pa = pd[a.dem] ?? 2;
-      const pb = pd[b.dem] ?? 2;
-      if (pa !== pb) return pa - pb;
+      // Prioridade por tempo: maior tempo aberto = maior prioridade (primeiro)
       return (a.abertoEm || 0) - (b.abertoEm || 0);
     });
   }, [data, busca, fClas, fDem, fAnalista]);
