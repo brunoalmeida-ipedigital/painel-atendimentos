@@ -267,7 +267,11 @@ export default function Index() {
     if (local) {
       try {
         const parsed = JSON.parse(local);
-        if (Array.isArray(parsed)) setData(parsed.filter(Boolean).map((c: any) => ({ ...c, tentativas: Array.isArray(c.tentativas) ? c.tentativas : [false, false, false] })));
+        if (Array.isArray(parsed)) setData(parsed.filter(Boolean).map((c: any) => {
+          const t = Array.isArray(c.tentativas) ? c.tentativas : [false, false, false, false, false, false, false, false];
+          while (t.length < 8) t.push(false);
+          return { ...c, tentativas: t };
+        }));
       } catch {}
     }
     fetchData(false);
