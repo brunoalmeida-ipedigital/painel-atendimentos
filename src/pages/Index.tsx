@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import AttendanceCard, { type Atendimento } from "@/components/AttendanceCard";
+import Dashboard from "@/components/Dashboard";
 
 // ── Config ────────────────────────────────────────────────────────
 const PIPE_ID = "823783";
@@ -135,6 +136,8 @@ export default function Index() {
     const saved = localStorage.getItem("cat_dark");
     return saved === "true";
   });
+
+  const [activeTab, setActiveTab] = useState<"list" | "dashboard">("list");
 
   const [busca, setBusca] = useState("");
   const [fClas, setFClas] = useState("");
@@ -496,6 +499,22 @@ export default function Index() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 mb-4 bg-muted rounded-lg p-1 w-fit">
+        <button
+          onClick={() => setActiveTab("list")}
+          className={`text-sm font-semibold px-4 py-1.5 rounded-md transition-colors ${activeTab === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+        >📋 Atendimentos</button>
+        <button
+          onClick={() => setActiveTab("dashboard")}
+          className={`text-sm font-semibold px-4 py-1.5 rounded-md transition-colors ${activeTab === "dashboard" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+        >📊 Dashboard</button>
+      </div>
+
+      {activeTab === "dashboard" ? (
+        <Dashboard data={data} now={now} />
+      ) : (
+      <>
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-4 items-center">
         <input
@@ -601,6 +620,8 @@ export default function Index() {
           <button onClick={addAt} className="bg-primary text-primary-foreground text-sm font-bold rounded-lg px-4 py-2 hover:opacity-90 transition-opacity">Adicionar ＋</button>
         </div>
       </div>
+      </>
+      )}
 
       {/* Toast */}
       <div id="toast-custom" className={toastMsg ? "show" : ""}>{toastMsg}</div>
