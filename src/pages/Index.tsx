@@ -204,14 +204,22 @@ export default function Index() {
           const parsedDate = parseDate(dtVal) || parseDate(fHora?.datetime_value) || parseDate(fHora?.value) || new Date();
           const openedAt = parsedDate.getTime();
 
+          // Parse agendamento date
+          const agendField = fields.find((f: any) => {
+            const n = (f.name || "").toLowerCase();
+            return n.includes("agendad") || n.includes("reagendad") || n.includes("data do agendamento") || n.includes("horário");
+          });
+          const agendadoEm = agendField?.datetime_value || agendField?.value || "";
+
           flat.push({
             id: c.id, lic, cli, cel: fieldVal(c, "Telefone Cliente", "telefone")?.replace("+55", "").trim() || "",
             clas, dem, stat: fieldVal(c, "Situação", "Status") || "Normal",
             etapa: c.current_phase?.name || "Caixa de entrada",
-            tentativas: [false, false, false], abertoEm: openedAt,
+            tentativas: [false, false, false, false, false, false, false, false], abertoEm: openedAt,
             encerrado: isEncerrado, encerradoEm: isEncerrado ? Date.now() : null,
             horaContato: fHora?.value || "", analista: (getAnalista(c) || "").toUpperCase(),
-            comentario: "", a20: false, a10: false, a4h: false, aAgd: false, a05: false, _original: c,
+            comentario: "", a20: false, a10: false, a4h: false, aAgd: false, a05: false,
+            agendadoEm, _original: c,
           });
         });
       });
