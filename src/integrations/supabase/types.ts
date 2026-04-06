@@ -14,7 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      atendimentos: {
+        Row: {
+          a_agd: boolean | null
+          a05: boolean | null
+          a10: boolean | null
+          a20: boolean | null
+          a4h: boolean | null
+          aberto_em: number
+          agendado_em: string | null
+          analista: string | null
+          cel: string | null
+          clas: string | null
+          cli: string
+          comentario: string | null
+          created_at: string
+          dem: string | null
+          encerrado: boolean | null
+          encerrado_em: number | null
+          etapa: string | null
+          hora_contato: string | null
+          id: string
+          lic: string
+          pipefy_card_id: string | null
+          stat: string | null
+          tentativas: boolean[] | null
+          updated_at: string
+        }
+        Insert: {
+          a_agd?: boolean | null
+          a05?: boolean | null
+          a10?: boolean | null
+          a20?: boolean | null
+          a4h?: boolean | null
+          aberto_em?: number
+          agendado_em?: string | null
+          analista?: string | null
+          cel?: string | null
+          clas?: string | null
+          cli?: string
+          comentario?: string | null
+          created_at?: string
+          dem?: string | null
+          encerrado?: boolean | null
+          encerrado_em?: number | null
+          etapa?: string | null
+          hora_contato?: string | null
+          id?: string
+          lic?: string
+          pipefy_card_id?: string | null
+          stat?: string | null
+          tentativas?: boolean[] | null
+          updated_at?: string
+        }
+        Update: {
+          a_agd?: boolean | null
+          a05?: boolean | null
+          a10?: boolean | null
+          a20?: boolean | null
+          a4h?: boolean | null
+          aberto_em?: number
+          agendado_em?: string | null
+          analista?: string | null
+          cel?: string | null
+          clas?: string | null
+          cli?: string
+          comentario?: string | null
+          created_at?: string
+          dem?: string | null
+          encerrado?: boolean | null
+          encerrado_em?: number | null
+          etapa?: string | null
+          hora_contato?: string | null
+          id?: string
+          lic?: string
+          pipefy_card_id?: string | null
+          stat?: string | null
+          tentativas?: boolean[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

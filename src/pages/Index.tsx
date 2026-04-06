@@ -36,13 +36,99 @@ const pipefyQuery = async (query: string, variables: Record<string, unknown> = {
 // ── Slack via Edge Function ──
 const slackNotify = async (payload: Record<string, unknown>) => {
   try {
-    // Somente envia notificações do Slack para o BRUNO
     const analista = String(payload.analista || "").toUpperCase();
     if (analista !== "BRUNO") return;
     await supabase.functions.invoke("slack-notify", { body: payload });
   } catch (e) {
     console.warn("Slack notify failed:", e);
   }
+};
+
+// ── DB helpers ──
+const upsertAtendimento = async (a: Atendimento) => {
+  const row = {
+    pipefy_card_id: a.id,
+    lic: a.lic || "",
+    cli: a.cli || "",
+    cel: a.cel || "",
+    clas: a.clas || "NFe",
+    dem: a.dem || "Média",
+    stat: a.stat || "",
+    etapa: a.etapa || "Caixa de entrada",
+    analista: a.analista || "",
+    comentario: a.comentario || "",
+    hora_contato: a.horaContato || "",
+    tentativas: a.tentativas || [false, false, false, false, false, false, false, false],
+    aberto_em: a.abertoEm || Date.now(),
+    encerrado: a.encerrado || false,
+    encerrado_em: a.encerradoEm || null,
+    agendado_em: a.agendadoEm || "",
+    a20: a.a20 || false,
+    a10: a.a10 || false,
+    a4h: a.a4h || false,
+    a_agd: a.aAgd || false,
+    a05: a.a05 || false,
+  };
+  const { error } = await supabase.from("atendimentos").upsert(row, { onConflict: "pipefy_card_id" });
+  if (error) console.warn("DB upsert error:", error.message);
+};
+
+const upsertMany = async (items: Atendimento[]) => {
+  const rows = items.map(a => ({
+    pipefy_card_id: a.id,
+    lic: a.lic || "",
+    cli: a.cli || "",
+    cel: a.cel || "",
+    clas: a.clas || "NFe",
+    dem: a.dem || "Média",
+    stat: a.stat || "",
+    etapa: a.etapa || "Caixa de entrada",
+    analista: a.analista || "",
+    comentario: a.comentario || "",
+    hora_contato: a.horaContato || "",
+    tentativas: a.tentativas || [false, false, false, false, false, false, false, false],
+    aberto_em: a.abertoEm || Date.now(),
+    encerrado: a.encerrado || false,
+    encerrado_em: a.encerradoEm || null,
+    agendado_em: a.agendadoEm || "",
+    a20: a.a20 || false,
+    a10: a.a10 || false,
+    a4h: a.a4h || false,
+    a_agd: a.aAgd || false,
+    a05: a.a05 || false,
+  }));
+  const { error } = await supabase.from("atendimentos").upsert(rows, { onConflict: "pipefy_card_id" });
+  if (error) console.warn("DB bulk upsert error:", error.message);
+};
+
+const dbRowToAtendimento = (r: any): Atendimento => ({
+  id: r.pipefy_card_id || r.id,
+  lic: r.lic || "",
+  cli: r.cli || "",
+  cel: r.cel || "",
+  clas: r.clas || "NFe",
+  dem: r.dem || "Média",
+  stat: r.stat || "",
+  etapa: r.etapa || "Caixa de entrada",
+  analista: r.analista || "",
+  comentario: r.comentario || "",
+  horaContato: r.hora_contato || "",
+  tentativas: r.tentativas || [false, false, false, false, false, false, false, false],
+  abertoEm: r.aberto_em || Date.now(),
+  encerrado: r.encerrado || false,
+  encerradoEm: r.encerrado_em || null,
+  agendadoEm: r.agendado_em || "",
+  a20: r.a20 || false,
+  a10: r.a10 || false,
+  a4h: r.a4h || false,
+  aAgd: r.a_agd || false,
+  a05: r.a05 || false,
+});
+
+const loadFromDB = async (): Promise<Atendimento[]> => {
+  const { data, error } = await supabase.from("atendimentos").select("*").order("aberto_em", { ascending: true });
+  if (error) { console.warn("DB load error:", error.message); return []; }
+  return (data || []).map(dbRowToAtendimento);
 };
 
 // ── Field helpers ──
@@ -180,6 +266,14 @@ export default function Index() {
     } catch {}
   };
 
+  // ── Load from DB on mount ──
+  useEffect(() => {
+    loadFromDB().then(rows => {
+      if (rows.length > 0) setData(rows);
+      fetchData(false);
+    });
+  }, []);
+
   // ── Sync with Pipefy ──
   const fetchData = useCallback(async (silent = false) => {
     try {
@@ -207,7 +301,6 @@ export default function Index() {
           const parsedDate = parseDate(dtVal) || parseDate(fHora?.datetime_value) || parseDate(fHora?.value) || new Date();
           const openedAt = parsedDate.getTime();
 
-          // Parse agendamento date
           const agendField = fields.find((f: any) => {
             const n = (f.name || "").toLowerCase();
             return n.includes("agendad") || n.includes("reagendad") || n.includes("data do agendamento") || n.includes("horário");
@@ -234,7 +327,6 @@ export default function Index() {
         const isAnSel = (c.etapa || "").toLowerCase().includes("analista selecionado");
         if (isAnSel && c.analista && !seenCards.current.has(c.id)) {
           seenCards.current.add(c.id);
-          // Send Slack notification for new assignment
           slackNotify({ type: "novo_atendimento", analista: c.analista, cliente: c.cli, licenca: c.lic });
           const isMe = !fAnalista || c.analista === fAnalista;
           if (isMe) {
@@ -251,11 +343,12 @@ export default function Index() {
           if (local) {
             const nt = Array.isArray(local.tentativas) ? [...local.tentativas] : [false, false, false, false, false, false, false, false];
             while (nt.length < 8) nt.push(false);
-            return { ...sc, tentativas: nt, stat: local.stat || "Normal", a05: local.a05, a20: local.a20, a4h: local.a4h, aAgd: local.aAgd, agendadoEm: sc.agendadoEm || local.agendadoEm };
+            return { ...sc, tentativas: nt, stat: local.stat || "Normal", comentario: local.comentario || sc.comentario, a05: local.a05, a20: local.a20, a4h: local.a4h, aAgd: local.aAgd, agendadoEm: sc.agendadoEm || local.agendadoEm };
           }
           return sc;
         });
-        localStorage.setItem("cat_v4", JSON.stringify(merged));
+        // Persist to DB
+        upsertMany(merged);
         return merged;
       });
       setLastSync(new Date());
@@ -264,21 +357,6 @@ export default function Index() {
       if (!silent) toast(`⚠ Erro Pipefy: ${e.message}`);
     }
   }, [fAnalista]);
-
-  useEffect(() => {
-    const local = localStorage.getItem("cat_v4");
-    if (local) {
-      try {
-        const parsed = JSON.parse(local);
-        if (Array.isArray(parsed)) setData(parsed.filter(Boolean).map((c: any) => {
-          const t = Array.isArray(c.tentativas) ? c.tentativas : [false, false, false, false, false, false, false, false];
-          while (t.length < 8) t.push(false);
-          return { ...c, tentativas: t };
-        }));
-      } catch {}
-    }
-    fetchData(false);
-  }, [fetchData]);
 
   useEffect(() => {
     pollRef.current = setInterval(() => fetchData(true), POLL_MS);
@@ -301,7 +379,6 @@ export default function Index() {
         if (isAnSel) {
           if (rest <= AV20 && rest > AV05 && !a.a20) {
             a.a20 = true; changed = true;
-            // Slack alert: 20 min
             const key = `20_${a.id}`;
             if (!slackSent.current.has(key)) {
               slackSent.current.add(key);
@@ -311,7 +388,6 @@ export default function Index() {
           }
           if (rest <= AV05 && rest > 0 && !a.a05) {
             a.a05 = true; changed = true;
-            // Slack alert: 5 min
             const key = `05_${a.id}`;
             if (!slackSent.current.has(key)) {
               slackSent.current.add(key);
@@ -321,7 +397,6 @@ export default function Index() {
           }
           if (rest <= 0 && !a.a4h) {
             a.a4h = true; changed = true;
-            // Slack alert: expired
             const key = `4h_${a.id}`;
             if (!slackSent.current.has(key)) {
               slackSent.current.add(key);
@@ -349,15 +424,51 @@ export default function Index() {
           }
         }
       });
-      if (changed) localStorage.setItem("cat_v4", JSON.stringify(n));
+      if (changed) {
+        // Persist alert state changes to DB
+        const changedItems = n.filter(a => a && !a.encerrado);
+        upsertMany(changedItems);
+      }
       return changed ? n : prev;
     });
     if (alertToSet) { setAlerta(alertToSet); beep(700, 0.8); }
   }, [now, fAnalista]);
 
+  // ── Realtime subscription ──
+  useEffect(() => {
+    const channel = supabase
+      .channel("atendimentos_realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "atendimentos" }, (payload) => {
+        if (payload.eventType === "UPDATE" || payload.eventType === "INSERT") {
+          const row = payload.new;
+          const updated = dbRowToAtendimento(row);
+          setData(prev => {
+            const idx = prev.findIndex(a => a.id === updated.id);
+            if (idx >= 0) {
+              const n = [...prev];
+              n[idx] = { ...n[idx], ...updated, _original: n[idx]._original };
+              return n;
+            }
+            return [updated, ...prev];
+          });
+        }
+        if (payload.eventType === "DELETE") {
+          const row = payload.old as any;
+          setData(prev => prev.filter(a => a.id !== (row.pipefy_card_id || row.id)));
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   // ── Actions ──
   const updateCard = async (id: string, changes: Partial<Atendimento>) => {
-    setData(p => { const n = p.map(c => c.id === id ? { ...c, ...changes } : c); localStorage.setItem("cat_v4", JSON.stringify(n)); return n; });
+    setData(p => {
+      const n = p.map(c => c.id === id ? { ...c, ...changes } : c);
+      const updated = n.find(c => c.id === id);
+      if (updated) upsertAtendimento(updated);
+      return n;
+    });
     if (changes.etapa && phaseIds[changes.etapa]) {
       try { await pipefyQuery(`mutation { moveCardToPhase(input: { card_id: "${id}", destination_phase_id: "${phaseIds[changes.etapa]}" }) { card { id } } }`); } catch (e: any) { toast(`⚠ Erro: ${e.message}`); }
     }
@@ -372,14 +483,16 @@ export default function Index() {
     updateCard(id, { tentativas: nt });
   };
 
-  const addAt = () => {
+  const addAt = async () => {
     if (!novo.lic || !novo.cli) { toast("⚠ Preencha Licença e Cliente"); return; }
     const id = Date.now().toString();
-    setData(p => {
-      const n: Atendimento[] = [{ id, ...novo, etapa: ETAPAS[0], tentativas: [false, false, false, false, false, false, false, false], abertoEm: Date.now(), encerrado: false, encerradoEm: null, horaContato: novo.horaContato, analista: fAnalista || "", comentario: "", a20: false, a10: false, a4h: false, aAgd: false, a05: false, agendadoEm: "" }, ...p];
-      localStorage.setItem("cat_v4", JSON.stringify(n));
-      return n;
-    });
+    const newItem: Atendimento = {
+      id, ...novo, etapa: ETAPAS[0], tentativas: [false, false, false, false, false, false, false, false],
+      abertoEm: Date.now(), encerrado: false, encerradoEm: null, horaContato: novo.horaContato,
+      analista: fAnalista || "", comentario: "", a20: false, a10: false, a4h: false, aAgd: false, a05: false, agendadoEm: ""
+    };
+    setData(p => [newItem, ...p]);
+    await upsertAtendimento(newItem);
     setNovo({ lic: "", cli: "", cel: "", horaContato: "", clas: "NFe", dem: "Alta", stat: "Normal" });
     toast("✅ Atendimento criado!");
   };
@@ -390,8 +503,13 @@ export default function Index() {
     toast("📋 Mensagem copiada!");
   };
 
-  const limEnc = () => {
-    setData(p => { const n = p.filter(x => !x.encerrado); localStorage.setItem("cat_v4", JSON.stringify(n)); return n; });
+  const limEnc = async () => {
+    const encerrados = data.filter(x => x.encerrado);
+    // Delete from DB
+    for (const e of encerrados) {
+      await supabase.from("atendimentos").delete().eq("pipefy_card_id", e.id);
+    }
+    setData(p => p.filter(x => !x.encerrado));
     toast("🗑 Encerrados removidos");
   };
 
@@ -411,13 +529,9 @@ export default function Index() {
       const md = !fDem || a.dem === fDem;
       const ma = !fAnalista || a.analista === fAnalista;
       return mb && mc && md && ma && !a.encerrado && !isAgendado;
-    }).sort((a, b) => {
-      // Prioridade por tempo: maior tempo aberto = maior prioridade (primeiro)
-      return (a.abertoEm || 0) - (b.abertoEm || 0);
-    });
+    }).sort((a, b) => (a.abertoEm || 0) - (b.abertoEm || 0));
   }, [data, busca, fClas, fDem, fAnalista]);
 
-  // Agendados section
   const agendados = useMemo(() => {
     return data.filter(a => {
       if (!a || a.encerrado) return false;
