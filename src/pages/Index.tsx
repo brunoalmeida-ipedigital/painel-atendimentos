@@ -151,15 +151,31 @@ const fieldVal = (card: any, ...keys: string[]) => {
 
 const parseDate = (val: string | null | undefined) => {
   if (!val) return null;
-  const d = new Date(val);
-  if (!isNaN(d.getTime())) return d;
+  // Handle ISO with timezone (e.g. 2025-01-15T14:00:00-03:00)
+  if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}T/.test(val)) {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d;
+  }
+  // Handle BR format DD/MM/YYYY HH:mm
   if (typeof val === "string" && val.includes("/")) {
     const [datePart, timePart] = val.split(" ");
-    const [day, month, year] = datePart.split("/");
-    const iso = `${year}-${month}-${day}${timePart ? "T" + timePart : ""}`;
-    const d2 = new Date(iso);
-    if (!isNaN(d2.getTime())) return d2;
+    const parts = datePart.split("/");
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      const fullYear = year.length === 2 ? `20${year}` : year;
+      const iso = `${fullYear}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${timePart || "00:00:00"}`;
+      const d2 = new Date(iso);
+      if (!isNaN(d2.getTime())) return d2;
+    }
   }
+  // Handle plain ISO date without timezone (treat as local)
+  if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}/.test(val)) {
+    const localVal = val.includes("T") ? val : val + "T00:00:00";
+    const d = new Date(localVal);
+    if (!isNaN(d.getTime())) return d;
+  }
+  const d = new Date(val);
+  if (!isNaN(d.getTime())) return d;
   return null;
 };
 
