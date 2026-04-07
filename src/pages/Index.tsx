@@ -477,16 +477,47 @@ export default function Index() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // ── Pipefy helpers ──
+  const pipefyComment = async (cardId: string, text: string) => {
+    try {
+      await pipefyQuery(`mutation { createComment(input: { card_id: ${cardId}, text: "${text.replace(/"/g, '\\"').replace(/\n/g, '\\n')}" }) { comment { id } } }`);
+    } catch (e: any) { console.warn("Pipefy comment error:", e.message); }
+  };
+
+  // ── Contact message modal state ──
+  const [contactModal, setContactModal] = useState<Atendimento | null>(null);
+
   // ── Actions ──
   const updateCard = async (id: string, changes: Partial<Atendimento>) => {
+    const prev = data.find(c => c.id === id);
     setData(p => {
       const n = p.map(c => c.id === id ? { ...c, ...changes } : c);
       const updated = n.find(c => c.id === id);
       if (updated) upsertAtendimento(updated);
       return n;
     });
+
+    // Move card in Pipefy
     if (changes.etapa && phaseIds[changes.etapa]) {
-      try { await pipefyQuery(`mutation { moveCardToPhase(input: { card_id: "${id}", destination_phase_id: "${phaseIds[changes.etapa]}" }) { card { id } } }`); } catch (e: any) { toast(`⚠ Erro: ${e.message}`); }
+      try {
+        await pipefyQuery(`mutation { moveCardToPhase(input: { card_id: "${id}", destination_phase_id: "${phaseIds[changes.etapa]}" }) { card { id } } }`);
+        // Log etapa change as comment in Pipefy
+        const now2 = new Date();
+        const logMsg = `📋 Etapa alterada para: ${changes.etapa} | Analista: ${prev?.analista || fAnalista} | ${now2.toLocaleString("pt-BR")}`;
+        await pipefyComment(id, logMsg);
+      } catch (e: any) { toast(`⚠ Erro Pipefy: ${e.message}`); }
+
+      // Auto-open contact message when moving to "Hora primeiro contato"
+      if (changes.etapa.toLowerCase().includes("hora primeiro contato") && prev) {
+        const updated = { ...prev, ...changes };
+        setContactModal(updated);
+      }
+    }
+
+    // Log encerramento
+    if (changes.encerrado === true) {
+      const now2 = new Date();
+      await pipefyComment(id, `🔒 Atendimento encerrado por ${prev?.analista || fAnalista} em ${now2.toLocaleString("pt-BR")}`);
     }
   };
 
@@ -495,22 +526,20 @@ export default function Index() {
     if (!a || a.encerrado) return;
     const nt = [...a.tentativas];
     nt[i] = !nt[i];
-    if (i === 2 && nt[2]) toast("📵 3ª tentativa! Considere encerrar.");
+    if (i === 2 && nt[2]) {
+      toast("📵 3ª tentativa! Considere encerrar.");
+      pipefyComment(id, `📵 3ª tentativa de contato sem sucesso | Analista: ${a.analista || fAnalista} | ${new Date().toLocaleString("pt-BR")}`);
+    }
     updateCard(id, { tentativas: nt });
   };
 
-  const addAt = async () => {
-    if (!novo.lic || !novo.cli) { toast("⚠ Preencha Licença e Cliente"); return; }
-    const id = Date.now().toString();
-    const newItem: Atendimento = {
-      id, ...novo, etapa: ETAPAS[0], tentativas: [false, false, false, false, false, false, false, false],
-      abertoEm: Date.now(), encerrado: false, encerradoEm: null, horaContato: novo.horaContato,
-      analista: fAnalista || "", comentario: "", a20: false, a10: false, a4h: false, aAgd: false, a05: false, agendadoEm: ""
-    };
-    setData(p => [newItem, ...p]);
-    await upsertAtendimento(newItem);
-    setNovo({ lic: "", cli: "", cel: "", horaContato: "", clas: "NFe", dem: "Alta", stat: "Normal" });
-    toast("✅ Atendimento criado!");
+  const saveComment = async (id: string, text: string) => {
+    updateCard(id, { comentario: text });
+    // Sync comment to Pipefy
+    if (text.trim()) {
+      await pipefyComment(id, `💬 ${fAnalista || "Analista"}: ${text}`);
+    }
+    toast("✅ Comentário salvo e sincronizado!");
   };
 
   const copyContactMsg = (a: Atendimento) => {
