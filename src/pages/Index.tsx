@@ -581,6 +581,7 @@ export default function Index() {
     toast("✅ Atendimento criado!");
   };
 
+  const clearEncerrados = async () => {
     const encerrados = data.filter(x => x.encerrado);
     // Delete from DB
     for (const e of encerrados) {
