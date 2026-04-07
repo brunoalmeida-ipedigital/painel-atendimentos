@@ -497,15 +497,17 @@ export default function Index() {
       return n;
     });
 
-    // Move card in Pipefy
-    if (changes.etapa && phaseIds[changes.etapa]) {
-      try {
-        await pipefyQuery(`mutation { moveCardToPhase(input: { card_id: "${id}", destination_phase_id: "${phaseIds[changes.etapa]}" }) { card { id } } }`);
-        // Log etapa change as comment in Pipefy
-        const now2 = new Date();
-        const logMsg = `📋 Etapa alterada para: ${changes.etapa} | Analista: ${prev?.analista || fAnalista} | ${now2.toLocaleString("pt-BR")}`;
-        await pipefyComment(id, logMsg);
-      } catch (e: any) { toast(`⚠ Erro Pipefy: ${e.message}`); }
+    // Move card in Pipefy — fuzzy match phase name
+    if (changes.etapa) {
+      const phaseId = phaseIds[changes.etapa] || Object.entries(phaseIds).find(([name]) => name.toLowerCase().includes(changes.etapa!.toLowerCase()))?.[1];
+      if (phaseId) {
+        try {
+          await pipefyQuery(`mutation { moveCardToPhase(input: { card_id: "${id}", destination_phase_id: "${phaseId}" }) { card { id } } }`);
+          const now2 = new Date();
+          const logMsg = `📋 Etapa alterada para: ${changes.etapa} | Analista: ${prev?.analista || fAnalista} | ${now2.toLocaleString("pt-BR")}`;
+          await pipefyComment(id, logMsg);
+        } catch (e: any) { toast(`⚠ Erro Pipefy: ${e.message}`); }
+      }
 
       // Auto-post first contact message when moving to "Hora primeiro contato"
       if (changes.etapa.toLowerCase().includes("hora primeiro contato") && prev) {
