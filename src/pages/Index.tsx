@@ -824,7 +824,7 @@ export default function Index() {
             />
             <div className="flex gap-2 justify-end mt-3">
               <button onClick={() => setComent(null)} className="text-sm px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors">Cancelar</button>
-              <button onClick={() => { updateCard(coment.id, { comentario: coment.text }); setComent(null); toast("✅ Comentário salvo!"); }} className="text-sm px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity">Salvar</button>
+              <button onClick={() => { saveComment(coment.id, coment.text); setComent(null); }} className="text-sm px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity">Salvar + Pipefy</button>
             </div>
           </div>
         </div>
