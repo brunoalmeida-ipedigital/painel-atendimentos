@@ -507,10 +507,29 @@ export default function Index() {
         await pipefyComment(id, logMsg);
       } catch (e: any) { toast(`⚠ Erro Pipefy: ${e.message}`); }
 
-      // Auto-open contact message when moving to "Hora primeiro contato"
+      // Auto-post first contact message when moving to "Hora primeiro contato"
       if (changes.etapa.toLowerCase().includes("hora primeiro contato") && prev) {
         const updated = { ...prev, ...changes };
-        setContactModal(updated);
+        const horaAgora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        const autoMsg = `Primeira tentativa de contato\n\nNome do cliente: ${updated.cli || "—"}\nCelular: ${updated.cel || "—"}\nHora: ${horaAgora}\nAnalista: ${(updated.analista || fAnalista || "—").toUpperCase()}`;
+        
+        // Save as local comment
+        setData(p => p.map(c => c.id === id ? { ...c, comentario: autoMsg } : c));
+        
+        // Post to Pipefy
+        pipefyComment(id, `📞 ${autoMsg}`);
+        
+        // Copy to clipboard
+        navigator.clipboard.writeText(autoMsg).then(() => {
+          toast("📋 Mensagem copiada e salva no Pipefy!");
+        }).catch(() => {
+          toast("📞 Mensagem salva no Pipefy!");
+        });
+        
+        // Mark first attempt
+        const nt = [...(updated.tentativas || [false,false,false,false,false,false,false,false])];
+        nt[0] = true;
+        setData(p => p.map(c => c.id === id ? { ...c, tentativas: nt } : c));
       }
     }
 
