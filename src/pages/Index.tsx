@@ -151,15 +151,31 @@ const fieldVal = (card: any, ...keys: string[]) => {
 
 const parseDate = (val: string | null | undefined) => {
   if (!val) return null;
-  const d = new Date(val);
-  if (!isNaN(d.getTime())) return d;
+  // Handle ISO with timezone (e.g. 2025-01-15T14:00:00-03:00)
+  if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}T/.test(val)) {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d;
+  }
+  // Handle BR format DD/MM/YYYY HH:mm
   if (typeof val === "string" && val.includes("/")) {
     const [datePart, timePart] = val.split(" ");
-    const [day, month, year] = datePart.split("/");
-    const iso = `${year}-${month}-${day}${timePart ? "T" + timePart : ""}`;
-    const d2 = new Date(iso);
-    if (!isNaN(d2.getTime())) return d2;
+    const parts = datePart.split("/");
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      const fullYear = year.length === 2 ? `20${year}` : year;
+      const iso = `${fullYear}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${timePart || "00:00:00"}`;
+      const d2 = new Date(iso);
+      if (!isNaN(d2.getTime())) return d2;
+    }
   }
+  // Handle plain ISO date without timezone (treat as local)
+  if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}/.test(val)) {
+    const localVal = val.includes("T") ? val : val + "T00:00:00";
+    const d = new Date(localVal);
+    if (!isNaN(d.getTime())) return d;
+  }
+  const d = new Date(val);
+  if (!isNaN(d.getTime())) return d;
   return null;
 };
 
@@ -461,16 +477,47 @@ export default function Index() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // ── Pipefy helpers ──
+  const pipefyComment = async (cardId: string, text: string) => {
+    try {
+      await pipefyQuery(`mutation { createComment(input: { card_id: ${cardId}, text: "${text.replace(/"/g, '\\"').replace(/\n/g, '\\n')}" }) { comment { id } } }`);
+    } catch (e: any) { console.warn("Pipefy comment error:", e.message); }
+  };
+
+  // ── Contact message modal state ──
+  const [contactModal, setContactModal] = useState<Atendimento | null>(null);
+
   // ── Actions ──
   const updateCard = async (id: string, changes: Partial<Atendimento>) => {
+    const prev = data.find(c => c.id === id);
     setData(p => {
       const n = p.map(c => c.id === id ? { ...c, ...changes } : c);
       const updated = n.find(c => c.id === id);
       if (updated) upsertAtendimento(updated);
       return n;
     });
+
+    // Move card in Pipefy
     if (changes.etapa && phaseIds[changes.etapa]) {
-      try { await pipefyQuery(`mutation { moveCardToPhase(input: { card_id: "${id}", destination_phase_id: "${phaseIds[changes.etapa]}" }) { card { id } } }`); } catch (e: any) { toast(`⚠ Erro: ${e.message}`); }
+      try {
+        await pipefyQuery(`mutation { moveCardToPhase(input: { card_id: "${id}", destination_phase_id: "${phaseIds[changes.etapa]}" }) { card { id } } }`);
+        // Log etapa change as comment in Pipefy
+        const now2 = new Date();
+        const logMsg = `📋 Etapa alterada para: ${changes.etapa} | Analista: ${prev?.analista || fAnalista} | ${now2.toLocaleString("pt-BR")}`;
+        await pipefyComment(id, logMsg);
+      } catch (e: any) { toast(`⚠ Erro Pipefy: ${e.message}`); }
+
+      // Auto-open contact message when moving to "Hora primeiro contato"
+      if (changes.etapa.toLowerCase().includes("hora primeiro contato") && prev) {
+        const updated = { ...prev, ...changes };
+        setContactModal(updated);
+      }
+    }
+
+    // Log encerramento
+    if (changes.encerrado === true) {
+      const now2 = new Date();
+      await pipefyComment(id, `🔒 Atendimento encerrado por ${prev?.analista || fAnalista} em ${now2.toLocaleString("pt-BR")}`);
     }
   };
 
@@ -479,8 +526,26 @@ export default function Index() {
     if (!a || a.encerrado) return;
     const nt = [...a.tentativas];
     nt[i] = !nt[i];
-    if (i === 2 && nt[2]) toast("📵 3ª tentativa! Considere encerrar.");
+    if (i === 2 && nt[2]) {
+      toast("📵 3ª tentativa! Considere encerrar.");
+      pipefyComment(id, `📵 3ª tentativa de contato sem sucesso | Analista: ${a.analista || fAnalista} | ${new Date().toLocaleString("pt-BR")}`);
+    }
     updateCard(id, { tentativas: nt });
+  };
+
+  const saveComment = async (id: string, text: string) => {
+    updateCard(id, { comentario: text });
+    // Sync comment to Pipefy
+    if (text.trim()) {
+      await pipefyComment(id, `💬 ${fAnalista || "Analista"}: ${text}`);
+    }
+    toast("✅ Comentário salvo e sincronizado!");
+  };
+
+  const copyContactMsg = (a: Atendimento) => {
+    const text = `Primeira tentativa de contato\n\nNome do cliente: ${a.cli}\nCelular: ${a.cel}\nHora: ${now.toLocaleTimeString()}\nAnalista: ${a.analista || fAnalista}`;
+    navigator.clipboard.writeText(text);
+    toast("📋 Mensagem copiada!");
   };
 
   const addAt = async () => {
@@ -497,13 +562,6 @@ export default function Index() {
     toast("✅ Atendimento criado!");
   };
 
-  const copyContactMsg = (a: Atendimento) => {
-    const text = `Primeira tentativa de contato\n\nNome do cliente: ${a.cli}\nCelular: ${a.cel}\nHora: ${now.toLocaleTimeString()}\nAnalista: ${a.analista || fAnalista}`;
-    navigator.clipboard.writeText(text);
-    toast("📋 Mensagem copiada!");
-  };
-
-  const limEnc = async () => {
     const encerrados = data.filter(x => x.encerrado);
     // Delete from DB
     for (const e of encerrados) {
@@ -766,7 +824,7 @@ export default function Index() {
             />
             <div className="flex gap-2 justify-end mt-3">
               <button onClick={() => setComent(null)} className="text-sm px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors">Cancelar</button>
-              <button onClick={() => { updateCard(coment.id, { comentario: coment.text }); setComent(null); toast("✅ Comentário salvo!"); }} className="text-sm px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity">Salvar</button>
+              <button onClick={() => { saveComment(coment.id, coment.text); setComent(null); }} className="text-sm px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity">Salvar + Pipefy</button>
             </div>
           </div>
         </div>
@@ -811,6 +869,32 @@ export default function Index() {
             <div className="flex gap-2 justify-end border-t border-border pt-3">
               <button onClick={() => setModEdit(null)} className="text-sm px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors">Cancelar</button>
               <button onClick={() => { updateCard(modEdit.id, { ...modEdit }); setModEdit(null); toast("✅ Atualizado!"); }} className="text-sm px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity">Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Contact Message Modal - Auto opens when moving to Hora primeiro contato */}
+      {contactModal && (
+        <div className="modal-overlay" onClick={() => setContactModal(null)}>
+          <div className="bg-card rounded-2xl p-6 max-w-md w-[90%] border border-border shadow-medium animate-fade-in" onClick={e => e.stopPropagation()}>
+            <h3 className="text-sm font-bold text-accent mb-1">📲 1º Contato — Mensagem para copiar</h3>
+            <p className="text-xs text-vintage-green font-semibold mb-3">✅ Etapa movida para "Hora primeiro contato" no Pipefy</p>
+            <div className="bg-muted rounded-lg p-3 text-sm text-foreground whitespace-pre-line mb-4 border border-border font-mono">
+              {`Primeira tentativa de contato\n\nNome do cliente: ${contactModal.cli}\nCelular: ${contactModal.cel}\nLicença: ${contactModal.lic}\nHora: ${now.toLocaleTimeString("pt-BR")}\nAnalista: ${contactModal.analista || fAnalista}`}
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setContactModal(null)} className="text-sm px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors">Fechar</button>
+              <button
+                onClick={async () => {
+                  const text = `Primeira tentativa de contato\n\nNome do cliente: ${contactModal.cli}\nCelular: ${contactModal.cel}\nLicença: ${contactModal.lic}\nHora: ${now.toLocaleTimeString("pt-BR")}\nAnalista: ${contactModal.analista || fAnalista}`;
+                  navigator.clipboard.writeText(text);
+                  await pipefyComment(contactModal.id, text);
+                  toast("📋 Copiado e salvo no Pipefy!");
+                  setContactModal(null);
+                }}
+                className="text-sm px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity"
+              >📋 Copiar e Salvar no Pipefy</button>
             </div>
           </div>
         </div>
