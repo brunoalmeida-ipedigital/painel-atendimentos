@@ -873,6 +873,32 @@ export default function Index() {
           </div>
         </div>
       )}
+
+      {/* Contact Message Modal - Auto opens when moving to Hora primeiro contato */}
+      {contactModal && (
+        <div className="modal-overlay" onClick={() => setContactModal(null)}>
+          <div className="bg-card rounded-2xl p-6 max-w-md w-[90%] border border-border shadow-medium animate-fade-in" onClick={e => e.stopPropagation()}>
+            <h3 className="text-sm font-bold text-accent mb-1">📲 1º Contato — Mensagem para copiar</h3>
+            <p className="text-xs text-vintage-green font-semibold mb-3">✅ Etapa movida para "Hora primeiro contato" no Pipefy</p>
+            <div className="bg-muted rounded-lg p-3 text-sm text-foreground whitespace-pre-line mb-4 border border-border font-mono">
+              {`Primeira tentativa de contato\n\nNome do cliente: ${contactModal.cli}\nCelular: ${contactModal.cel}\nLicença: ${contactModal.lic}\nHora: ${now.toLocaleTimeString("pt-BR")}\nAnalista: ${contactModal.analista || fAnalista}`}
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setContactModal(null)} className="text-sm px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors">Fechar</button>
+              <button
+                onClick={async () => {
+                  const text = `Primeira tentativa de contato\n\nNome do cliente: ${contactModal.cli}\nCelular: ${contactModal.cel}\nLicença: ${contactModal.lic}\nHora: ${now.toLocaleTimeString("pt-BR")}\nAnalista: ${contactModal.analista || fAnalista}`;
+                  navigator.clipboard.writeText(text);
+                  await pipefyComment(contactModal.id, text);
+                  toast("📋 Copiado e salvo no Pipefy!");
+                  setContactModal(null);
+                }}
+                className="text-sm px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity"
+              >📋 Copiar e Salvar no Pipefy</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
