@@ -725,7 +725,7 @@ export default function Index() {
           <option value="Alta">🔴 Alta</option>
           <option value="Média">🟡 Média</option>
         </select>
-        <button onClick={limEnc} className="text-sm text-destructive bg-destructive/10 border border-transparent rounded-lg px-3 py-2 font-semibold hover:bg-destructive/20 transition-colors">🗑 Limpar enc.</button>
+        <button onClick={clearEncerrados} className="text-sm text-destructive bg-destructive/10 border border-transparent rounded-lg px-3 py-2 font-semibold hover:bg-destructive/20 transition-colors">🗑 Limpar enc.</button>
         <div className="ml-auto text-xs text-muted-foreground font-medium">
           📋 {filtered.length} registro(s) {lastSync && `• Sync: ${lastSync.toLocaleTimeString("pt-BR")}`}
         </div>
