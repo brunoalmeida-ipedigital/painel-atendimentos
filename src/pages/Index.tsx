@@ -548,7 +548,20 @@ export default function Index() {
     toast("📋 Mensagem copiada!");
   };
 
-  const limEnc = async () => {
+  const addAt = async () => {
+    if (!novo.lic || !novo.cli) { toast("⚠ Preencha Licença e Cliente"); return; }
+    const id = Date.now().toString();
+    const newItem: Atendimento = {
+      id, ...novo, etapa: ETAPAS[0], tentativas: [false, false, false, false, false, false, false, false],
+      abertoEm: Date.now(), encerrado: false, encerradoEm: null, horaContato: novo.horaContato,
+      analista: fAnalista || "", comentario: "", a20: false, a10: false, a4h: false, aAgd: false, a05: false, agendadoEm: ""
+    };
+    setData(p => [newItem, ...p]);
+    await upsertAtendimento(newItem);
+    setNovo({ lic: "", cli: "", cel: "", horaContato: "", clas: "NFe", dem: "Alta", stat: "Normal" });
+    toast("✅ Atendimento criado!");
+  };
+
     const encerrados = data.filter(x => x.encerrado);
     // Delete from DB
     for (const e of encerrados) {
