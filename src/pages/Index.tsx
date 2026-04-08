@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import AttendanceCard, { type Atendimento } from "@/components/AttendanceCard";
 import Dashboard from "@/components/Dashboard";
+import AgendamentosPanel from "@/components/AgendamentosPanel";
 
 // ── Config ────────────────────────────────────────────────────────
 const PIPE_ID = "823783";
