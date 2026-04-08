@@ -533,6 +533,12 @@ export default function Index() {
         const nt = [...(updated.tentativas || [false,false,false,false,false,false,false,false])];
         nt[0] = true;
         setData(p => p.map(c => c.id === id ? { ...c, tentativas: nt } : c));
+
+        // Record primeira_tentativa_em and tentativa_atual in DB
+        await supabase.from("atendimentos").update({
+          primeira_tentativa_em: new Date().toISOString(),
+          tentativa_atual: 1,
+        }).eq("pipefy_card_id", id);
       }
     }
 
