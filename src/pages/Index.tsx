@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import AttendanceCard, { type Atendimento } from "@/components/AttendanceCard";
 import Dashboard from "@/components/Dashboard";
+import AgendamentosPanel from "@/components/AgendamentosPanel";
 
 // ── Config ────────────────────────────────────────────────────────
 const PIPE_ID = "823783";
@@ -239,7 +240,7 @@ export default function Index() {
     return saved === "true";
   });
 
-  const [activeTab, setActiveTab] = useState<"list" | "dashboard">("list");
+  const [activeTab, setActiveTab] = useState<"list" | "dashboard" | "agendamentos">("list");
 
   const [busca, setBusca] = useState("");
   const [fClas, setFClas] = useState("");
@@ -378,6 +379,18 @@ export default function Index() {
     pollRef.current = setInterval(() => fetchData(true), POLL_MS);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [fetchData]);
+
+  // Check retries & agendamento alerts every 60s
+  useEffect(() => {
+    const checkRetries = async () => {
+      try {
+        await supabase.functions.invoke("check-retries");
+      } catch (e) { console.warn("check-retries error:", e); }
+    };
+    checkRetries();
+    const interval = setInterval(checkRetries, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Alert worker + Slack SLA alerts
   useEffect(() => {
@@ -532,6 +545,12 @@ export default function Index() {
         const nt = [...(updated.tentativas || [false,false,false,false,false,false,false,false])];
         nt[0] = true;
         setData(p => p.map(c => c.id === id ? { ...c, tentativas: nt } : c));
+
+        // Record primeira_tentativa_em and tentativa_atual in DB
+        await supabase.from("atendimentos").update({
+          primeira_tentativa_em: new Date().toISOString(),
+          tentativa_atual: 1,
+        }).eq("pipefy_card_id", id);
       }
     }
 
@@ -703,10 +722,16 @@ export default function Index() {
           onClick={() => setActiveTab("dashboard")}
           className={`text-sm font-semibold px-4 py-1.5 rounded-md transition-colors ${activeTab === "dashboard" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
         >📊 Dashboard</button>
+        <button
+          onClick={() => setActiveTab("agendamentos")}
+          className={`text-sm font-semibold px-4 py-1.5 rounded-md transition-colors ${activeTab === "agendamentos" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+        >📅 Agendamentos</button>
       </div>
 
       {activeTab === "dashboard" ? (
         <Dashboard data={data} now={now} />
+      ) : activeTab === "agendamentos" ? (
+        <AgendamentosPanel />
       ) : (
       <>
       {/* Filters */}
