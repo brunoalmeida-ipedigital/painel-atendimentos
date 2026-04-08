@@ -7,7 +7,7 @@ import AgendamentosPanel from "@/components/AgendamentosPanel";
 // ── Config ────────────────────────────────────────────────────────
 const PIPE_ID = "823783";
 const POLL_MS = 60000;
-const DONE_PHASES = new Set(["Finalizado", "Arquivado", "Concluido", "Concluído", "Finalizado em", "FINALIZADO EM"]);
+const DONE_PHASES = new Set(["Finalizado", "Arquivado", "Concluido", "Concluído", "Finalizado em", "FINALIZADO EM", "Hora primeiro contato - TMR"]);
 
 const ETAPAS = [
   "Caixa de entrada", "Analista Selecionado", "Hora primeiro contato - TMR",
