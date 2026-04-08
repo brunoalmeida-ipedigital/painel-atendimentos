@@ -710,6 +710,10 @@ export default function Index() {
           onClick={() => setActiveTab("dashboard")}
           className={`text-sm font-semibold px-4 py-1.5 rounded-md transition-colors ${activeTab === "dashboard" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
         >📊 Dashboard</button>
+        <button
+          onClick={() => setActiveTab("agendamentos")}
+          className={`text-sm font-semibold px-4 py-1.5 rounded-md transition-colors ${activeTab === "agendamentos" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+        >📅 Agendamentos</button>
       </div>
 
       {activeTab === "dashboard" ? (
