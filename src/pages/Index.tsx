@@ -945,7 +945,7 @@ export default function Index() {
         <div className="modal-overlay" onClick={() => setContactModal(null)}>
           <div className="bg-card rounded-2xl p-6 max-w-md w-[90%] border border-border shadow-medium animate-fade-in" onClick={e => e.stopPropagation()}>
             <h3 className="text-sm font-bold text-accent mb-1">📲 1º Contato — Mensagem para copiar</h3>
-            <p className="text-xs text-vintage-green font-semibold mb-3">✅ Etapa movida para "Hora primeiro contato" no Pipefy</p>
+            <p className="text-xs text-vintage-green font-semibold mb-3">✅ Etapa movida para "Hora primeiro contato - TMR" no Pipefy</p>
             <div className="bg-muted rounded-lg p-3 text-sm text-foreground whitespace-pre-line mb-4 border border-border font-mono">
               {`Primeira tentativa de contato\n\nNome do cliente: ${contactModal.cli}\nCelular: ${contactModal.cel}\nLicença: ${contactModal.lic}\nHora: ${now.toLocaleTimeString("pt-BR")}\nAnalista: ${contactModal.analista || fAnalista}`}
             </div>
