@@ -240,7 +240,7 @@ export default function Index() {
     return saved === "true";
   });
 
-  const [activeTab, setActiveTab] = useState<"list" | "dashboard">("list");
+  const [activeTab, setActiveTab] = useState<"list" | "dashboard" | "agendamentos">("list");
 
   const [busca, setBusca] = useState("");
   const [fClas, setFClas] = useState("");
