@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      agendamentos: {
+        Row: {
+          created_at: string
+          data_hora: string
+          id: string
+          licenca: string
+          nome: string
+          notificado: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_hora: string
+          id?: string
+          licenca: string
+          nome: string
+          notificado?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_hora?: string
+          id?: string
+          licenca?: string
+          nome?: string
+          notificado?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       atendimentos: {
         Row: {
           a_agd: boolean | null
@@ -37,8 +67,11 @@ export type Database = {
           id: string
           lic: string
           pipefy_card_id: string | null
+          primeira_tentativa_em: string | null
           stat: string | null
+          tentativa_atual: number | null
           tentativas: boolean[] | null
+          ultima_notificacao_retry: string | null
           updated_at: string
         }
         Insert: {
@@ -63,8 +96,11 @@ export type Database = {
           id?: string
           lic?: string
           pipefy_card_id?: string | null
+          primeira_tentativa_em?: string | null
           stat?: string | null
+          tentativa_atual?: number | null
           tentativas?: boolean[] | null
+          ultima_notificacao_retry?: string | null
           updated_at?: string
         }
         Update: {
@@ -89,8 +125,11 @@ export type Database = {
           id?: string
           lic?: string
           pipefy_card_id?: string | null
+          primeira_tentativa_em?: string | null
           stat?: string | null
+          tentativa_atual?: number | null
           tentativas?: boolean[] | null
+          ultima_notificacao_retry?: string | null
           updated_at?: string
         }
         Relationships: []
