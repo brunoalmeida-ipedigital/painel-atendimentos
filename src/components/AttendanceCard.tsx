@@ -360,7 +360,7 @@ export default function AttendanceCard({ item: a, index, now, onUpdateCard, onCo
             ) : (
               <button
                 className="text-xs px-3 py-1 rounded bg-destructive/10 text-destructive font-semibold hover:bg-destructive/20 transition-colors"
-                onClick={(e) => { e.stopPropagation(); onUpdateCard(a.id, { etapa: "Finalizado", encerrado: true, encerradoEm: Date.now() }); }}
+                onClick={(e) => { e.stopPropagation(); onUpdateCard(a.id, { etapa: "FINALIZADO EM", encerrado: true, encerradoEm: Date.now() }); }}
               >✕ Encerrar</button>
             )}
           </div>
