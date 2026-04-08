@@ -3,15 +3,15 @@ import { ChevronDown } from "lucide-react";
 
 // ── Config ──
 const ETAPAS = [
-  "Caixa de entrada", "Analista Selecionado", "Hora primeiro contato",
+  "Caixa de entrada", "Analista Selecionado", "Hora primeiro contato - TMR",
   "Cliente Agendado/Reagendado", "Parado", "Em Configuração",
-  "Finalizado em", "Arquivado", "Concluído"
+  "FINALIZADO EM", "Arquivado", "Concluído"
 ];
 const ETAPAS_ABR: Record<string, string> = {
   "Caixa de entrada": "Cx. Entrada", "Analista Selecionado": "An. Selec.",
-  "Hora primeiro contato": "1º Contato", "Cliente Agendado/Reagendado": "Agenda/Reagd",
+  "Hora primeiro contato - TMR": "1º Contato", "Cliente Agendado/Reagendado": "Agenda/Reagd",
   "Parado": "Parado", "Em Configuração": "Em Config.",
-  "Finalizado em": "Finalizado", "Arquivado": "Arquivado", "Concluído": "Concluído"
+  "FINALIZADO EM": "Finalizado", "Arquivado": "Arquivado", "Concluído": "Concluído"
 };
 const CCOR: Record<string, string> = {
   NFe: "badge-nfe", "NFe SC": "badge-nfesc", "Boleto Fácil": "badge-bol",

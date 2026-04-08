@@ -10,9 +10,9 @@ const POLL_MS = 60000;
 const DONE_PHASES = new Set(["Finalizado", "Arquivado", "Concluido", "Concluído", "Finalizado em", "FINALIZADO EM"]);
 
 const ETAPAS = [
-  "Caixa de entrada", "Analista Selecionado", "Hora primeiro contato",
+  "Caixa de entrada", "Analista Selecionado", "Hora primeiro contato - TMR",
   "Cliente Agendado/Reagendado", "Parado", "Em Configuração",
-  "Finalizado em", "Arquivado", "Concluído"
+  "FINALIZADO EM", "Arquivado", "Concluído"
 ];
 
 const CHEX: Record<string, string> = {
