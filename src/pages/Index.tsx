@@ -718,6 +718,8 @@ export default function Index() {
 
       {activeTab === "dashboard" ? (
         <Dashboard data={data} now={now} />
+      ) : activeTab === "agendamentos" ? (
+        <AgendamentosPanel />
       ) : (
       <>
       {/* Filters */}
