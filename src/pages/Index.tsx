@@ -380,6 +380,18 @@ export default function Index() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [fetchData]);
 
+  // Check retries & agendamento alerts every 60s
+  useEffect(() => {
+    const checkRetries = async () => {
+      try {
+        await supabase.functions.invoke("check-retries");
+      } catch (e) { console.warn("check-retries error:", e); }
+    };
+    checkRetries();
+    const interval = setInterval(checkRetries, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Alert worker + Slack SLA alerts
   useEffect(() => {
     let alertToSet: any = null;
