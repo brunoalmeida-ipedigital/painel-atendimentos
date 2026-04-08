@@ -3,15 +3,15 @@ import { ChevronDown } from "lucide-react";
 
 // ── Config ──
 const ETAPAS = [
-  "Caixa de entrada", "Analista Selecionado", "Hora primeiro contato",
+  "Caixa de entrada", "Analista Selecionado", "Hora primeiro contato - TMR",
   "Cliente Agendado/Reagendado", "Parado", "Em Configuração",
-  "Finalizado em", "Arquivado", "Concluído"
+  "FINALIZADO EM", "Arquivado", "Concluído"
 ];
 const ETAPAS_ABR: Record<string, string> = {
   "Caixa de entrada": "Cx. Entrada", "Analista Selecionado": "An. Selec.",
-  "Hora primeiro contato": "1º Contato", "Cliente Agendado/Reagendado": "Agenda/Reagd",
+  "Hora primeiro contato - TMR": "1º Contato", "Cliente Agendado/Reagendado": "Agenda/Reagd",
   "Parado": "Parado", "Em Configuração": "Em Config.",
-  "Finalizado em": "Finalizado", "Arquivado": "Arquivado", "Concluído": "Concluído"
+  "FINALIZADO EM": "Finalizado", "Arquivado": "Arquivado", "Concluído": "Concluído"
 };
 const CCOR: Record<string, string> = {
   NFe: "badge-nfe", "NFe SC": "badge-nfesc", "Boleto Fácil": "badge-bol",
@@ -360,7 +360,7 @@ export default function AttendanceCard({ item: a, index, now, onUpdateCard, onCo
             ) : (
               <button
                 className="text-xs px-3 py-1 rounded bg-destructive/10 text-destructive font-semibold hover:bg-destructive/20 transition-colors"
-                onClick={(e) => { e.stopPropagation(); onUpdateCard(a.id, { etapa: "Finalizado", encerrado: true, encerradoEm: Date.now() }); }}
+                onClick={(e) => { e.stopPropagation(); onUpdateCard(a.id, { etapa: "FINALIZADO EM", encerrado: true, encerradoEm: Date.now() }); }}
               >✕ Encerrar</button>
             )}
           </div>

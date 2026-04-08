@@ -10,9 +10,9 @@ const POLL_MS = 60000;
 const DONE_PHASES = new Set(["Finalizado", "Arquivado", "Concluido", "Concluído", "Finalizado em", "FINALIZADO EM"]);
 
 const ETAPAS = [
-  "Caixa de entrada", "Analista Selecionado", "Hora primeiro contato",
+  "Caixa de entrada", "Analista Selecionado", "Hora primeiro contato - TMR",
   "Cliente Agendado/Reagendado", "Parado", "Em Configuração",
-  "Finalizado em", "Arquivado", "Concluído"
+  "FINALIZADO EM", "Arquivado", "Concluído"
 ];
 
 const CHEX: Record<string, string> = {
@@ -559,6 +559,25 @@ export default function Index() {
       const now2 = new Date();
       await pipefyComment(id, `🔒 Atendimento encerrado por ${prev?.analista || fAnalista} em ${now2.toLocaleString("pt-BR")}`);
     }
+
+    // Auto-fill Pipefy fields when moving to "FINALIZADO EM"
+    if (changes.etapa && changes.etapa.toUpperCase().includes("FINALIZADO")) {
+      try {
+        // Fill: Finalizado em = Concluído, Cliente recebeu = Treinamento, Foi realizado o Treinamento = Não, Foi necessário analista Nível II ou III = Não
+        const updateFieldsMutation = `mutation {
+          updateCardField1: updateCardField(input: { card_id: ${id}, field_id: "finalizado_em", new_value: "Concluído" }) { card { id } }
+          updateCardField2: updateCardField(input: { card_id: ${id}, field_id: "cliente_recebeu", new_value: "Treinamento (Como realizar emissão...)" }) { card { id } }
+          updateCardField3: updateCardField(input: { card_id: ${id}, field_id: "foi_realizado_o_treinamento", new_value: "Não" }) { card { id } }
+          updateCardField4: updateCardField(input: { card_id: ${id}, field_id: "por_que_n_o_recebeu_treinamento", new_value: "deve ser informado" }) { card { id } }
+          updateCardField5: updateCardField(input: { card_id: ${id}, field_id: "foi_necess_rio_ajuda_de_analista_n_vel_ii_ou_iii", new_value: "Não" }) { card { id } }
+        }`;
+        await pipefyQuery(updateFieldsMutation);
+        toast("✅ Campos do Pipefy preenchidos automaticamente!");
+      } catch (e: any) {
+        console.warn("Erro ao preencher campos FINALIZADO:", e.message);
+        toast("⚠ Etapa movida, mas erro ao preencher campos automáticos");
+      }
+    }
   };
 
   const tent = (id: string, i: number) => {
@@ -926,7 +945,7 @@ export default function Index() {
         <div className="modal-overlay" onClick={() => setContactModal(null)}>
           <div className="bg-card rounded-2xl p-6 max-w-md w-[90%] border border-border shadow-medium animate-fade-in" onClick={e => e.stopPropagation()}>
             <h3 className="text-sm font-bold text-accent mb-1">📲 1º Contato — Mensagem para copiar</h3>
-            <p className="text-xs text-vintage-green font-semibold mb-3">✅ Etapa movida para "Hora primeiro contato" no Pipefy</p>
+            <p className="text-xs text-vintage-green font-semibold mb-3">✅ Etapa movida para "Hora primeiro contato - TMR" no Pipefy</p>
             <div className="bg-muted rounded-lg p-3 text-sm text-foreground whitespace-pre-line mb-4 border border-border font-mono">
               {`Primeira tentativa de contato\n\nNome do cliente: ${contactModal.cli}\nCelular: ${contactModal.cel}\nLicença: ${contactModal.lic}\nHora: ${now.toLocaleTimeString("pt-BR")}\nAnalista: ${contactModal.analista || fAnalista}`}
             </div>
