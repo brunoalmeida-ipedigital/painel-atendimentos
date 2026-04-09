@@ -295,9 +295,12 @@ export default function AttendanceCard({ item: a, index, now, onUpdateCard, onCo
             )}
             {/* Tentativas */}
             <div className={isAgendado ? "" : "md:col-span-1"}>
-              <span className="text-[0.65rem] uppercase font-bold text-muted-foreground tracking-wider block">Tentativas</span>
+              <span className="text-[0.65rem] uppercase font-bold text-muted-foreground tracking-wider block">
+                Tentativas ({tentativasFeitas}/{MAX_TENTATIVAS})
+                {atingiuLimite && <span className="text-destructive ml-1">⛔ Limite!</span>}
+              </span>
               <div className="flex gap-1 mt-1 flex-wrap">
-                {tentativas.map((done, i) => {
+                {tentativas.slice(0, MAX_TENTATIVAS).map((done, i) => {
                   const isPrimary = i < 3;
                   const isAnSel = (a.etapa || "").toLowerCase().includes("analista selecionado");
                   const isHoraContato = (a.etapa || "").toLowerCase().includes("hora do primeiro contato");
@@ -313,12 +316,14 @@ export default function AttendanceCard({ item: a, index, now, onUpdateCard, onCo
                       : TENT_COLORS_SECONDARY[i - 3] || "bg-muted-foreground border-muted-foreground text-background";
                   }
 
+                  const blocked = isAnSel || (atingiuLimite && !done);
+
                   return (
                     <button
                       key={i}
                       className={`w-6 h-6 rounded text-[0.65rem] font-bold border flex items-center justify-center transition-all ${bg}`}
-                      onClick={(e) => { e.stopPropagation(); if (!isAnSel && !(i === 0 && isHoraContato)) onToggleTent(a.id, i); }}
-                      style={{ cursor: isAnSel ? "not-allowed" : "pointer", opacity: isAnSel ? 0.4 : 1 }}
+                      onClick={(e) => { e.stopPropagation(); if (!blocked && !(i === 0 && isHoraContato)) onToggleTent(a.id, i); }}
+                      style={{ cursor: blocked ? "not-allowed" : "pointer", opacity: blocked ? 0.4 : 1 }}
                     >
                       {done ? "✓" : txt}
                     </button>
