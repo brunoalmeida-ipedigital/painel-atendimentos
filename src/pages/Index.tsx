@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AttendanceCard, { type Atendimento } from "@/components/AttendanceCard";
 import Dashboard from "@/components/Dashboard";
 import AgendamentosPanel from "@/components/AgendamentosPanel";
+import EmailsPanel from "@/components/EmailsPanel";
 
 // ── Config ────────────────────────────────────────────────────────
 const PIPE_ID = "823783";
@@ -240,7 +241,7 @@ export default function Index() {
     return saved === "true";
   });
 
-  const [activeTab, setActiveTab] = useState<"list" | "dashboard" | "agendamentos">("list");
+  const [activeTab, setActiveTab] = useState<"list" | "dashboard" | "agendamentos" | "emails">("list");
 
   const [busca, setBusca] = useState("");
   const [fClas, setFClas] = useState("");
@@ -584,10 +585,19 @@ export default function Index() {
     const a = data.find(x => x.id === id);
     if (!a || a.encerrado) return;
     const nt = [...a.tentativas];
+    const currentCount = nt.filter(Boolean).length;
+    // Block if already at max 6 and trying to add more
+    if (currentCount >= 6 && !nt[i]) {
+      toast("⛔ Limite de 6 tentativas atingido!");
+      return;
+    }
     nt[i] = !nt[i];
     if (i === 2 && nt[2]) {
       toast("📵 3ª tentativa! Considere encerrar.");
       pipefyComment(id, `📵 3ª tentativa de contato sem sucesso | Analista: ${a.analista || fAnalista} | ${new Date().toLocaleString("pt-BR")}`);
+    }
+    if (nt.filter(Boolean).length >= 6) {
+      toast("⛔ 6ª tentativa atingida! Fluxo de retentativa encerrado.");
     }
     updateCard(id, { tentativas: nt });
   };
@@ -732,7 +742,7 @@ export default function Index() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 bg-muted rounded-lg p-1 w-fit">
+      <div className="flex gap-1 mb-4 bg-muted rounded-lg p-1 w-fit flex-wrap">
         <button
           onClick={() => setActiveTab("list")}
           className={`text-sm font-semibold px-4 py-1.5 rounded-md transition-colors ${activeTab === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
@@ -744,13 +754,19 @@ export default function Index() {
         <button
           onClick={() => setActiveTab("agendamentos")}
           className={`text-sm font-semibold px-4 py-1.5 rounded-md transition-colors ${activeTab === "agendamentos" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-        >📅 Agendamentos</button>
+        >📞 Chamar Cliente</button>
+        <button
+          onClick={() => setActiveTab("emails")}
+          className={`text-sm font-semibold px-4 py-1.5 rounded-md transition-colors ${activeTab === "emails" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+        >📧 Emails</button>
       </div>
 
       {activeTab === "dashboard" ? (
         <Dashboard data={data} now={now} />
       ) : activeTab === "agendamentos" ? (
         <AgendamentosPanel />
+      ) : activeTab === "emails" ? (
+        <EmailsPanel />
       ) : (
       <>
       {/* Filters */}

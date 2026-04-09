@@ -132,6 +132,9 @@ export default function AttendanceCard({ item: a, index, now, onUpdateCard, onCo
   // Ensure 8 tentativas
   const tentativas = [...(a.tentativas || [])];
   while (tentativas.length < 8) tentativas.push(false);
+  const tentativasFeitas = tentativas.filter(Boolean).length;
+  const MAX_TENTATIVAS = 6;
+  const atingiuLimite = tentativasFeitas >= MAX_TENTATIVAS;
 
   // Agendado info
   const isAgendado = (a.etapa || "").toLowerCase().includes("agendado");
@@ -165,26 +168,32 @@ export default function AttendanceCard({ item: a, index, now, onUpdateCard, onCo
         </div>
 
         {/* Tentativas inline */}
-        <div className="flex gap-0.5 flex-shrink-0">
-          {tentativas.map((done, i) => {
-            const isPrimary = i < 3;
-            let bg = "bg-muted border-border text-muted-foreground";
-            if (done) {
-              bg = isPrimary
-                ? TENT_COLORS_PRIMARY[i]
-                : TENT_COLORS_SECONDARY[i - 3] || "bg-muted-foreground border-muted-foreground text-background";
-            }
-            return (
-              <button
-                key={i}
-                className={`w-5 h-5 rounded text-[0.55rem] font-bold border flex items-center justify-center transition-all ${bg}`}
-                onClick={(e) => { e.stopPropagation(); onToggleTent(a.id, i); }}
-                title={`Tentativa ${i + 1}`}
-              >
-                {done ? "✓" : i + 1}
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <span className={`text-[0.6rem] font-bold px-1 py-0.5 rounded ${atingiuLimite ? "bg-destructive/20 text-destructive" : "text-muted-foreground"}`}>
+            {tentativasFeitas}/{MAX_TENTATIVAS}
+          </span>
+          <div className="flex gap-0.5">
+            {tentativas.slice(0, MAX_TENTATIVAS).map((done, i) => {
+              const isPrimary = i < 3;
+              let bg = "bg-muted border-border text-muted-foreground";
+              if (done) {
+                bg = isPrimary
+                  ? TENT_COLORS_PRIMARY[i]
+                  : TENT_COLORS_SECONDARY[i - 3] || "bg-muted-foreground border-muted-foreground text-background";
+              }
+              return (
+                <button
+                  key={i}
+                  className={`w-5 h-5 rounded text-[0.55rem] font-bold border flex items-center justify-center transition-all ${bg}`}
+                  onClick={(e) => { e.stopPropagation(); if (!atingiuLimite || done) onToggleTent(a.id, i); }}
+                  title={`Tentativa ${i + 1}${atingiuLimite && !done ? " (limite atingido)" : ""}`}
+                  style={{ cursor: atingiuLimite && !done ? "not-allowed" : "pointer", opacity: atingiuLimite && !done ? 0.4 : 1 }}
+                >
+                  {done ? "✓" : i + 1}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Agendado badge */}
@@ -286,9 +295,12 @@ export default function AttendanceCard({ item: a, index, now, onUpdateCard, onCo
             )}
             {/* Tentativas */}
             <div className={isAgendado ? "" : "md:col-span-1"}>
-              <span className="text-[0.65rem] uppercase font-bold text-muted-foreground tracking-wider block">Tentativas</span>
+              <span className="text-[0.65rem] uppercase font-bold text-muted-foreground tracking-wider block">
+                Tentativas ({tentativasFeitas}/{MAX_TENTATIVAS})
+                {atingiuLimite && <span className="text-destructive ml-1">⛔ Limite!</span>}
+              </span>
               <div className="flex gap-1 mt-1 flex-wrap">
-                {tentativas.map((done, i) => {
+                {tentativas.slice(0, MAX_TENTATIVAS).map((done, i) => {
                   const isPrimary = i < 3;
                   const isAnSel = (a.etapa || "").toLowerCase().includes("analista selecionado");
                   const isHoraContato = (a.etapa || "").toLowerCase().includes("hora do primeiro contato");
@@ -304,12 +316,14 @@ export default function AttendanceCard({ item: a, index, now, onUpdateCard, onCo
                       : TENT_COLORS_SECONDARY[i - 3] || "bg-muted-foreground border-muted-foreground text-background";
                   }
 
+                  const blocked = isAnSel || (atingiuLimite && !done);
+
                   return (
                     <button
                       key={i}
                       className={`w-6 h-6 rounded text-[0.65rem] font-bold border flex items-center justify-center transition-all ${bg}`}
-                      onClick={(e) => { e.stopPropagation(); if (!isAnSel && !(i === 0 && isHoraContato)) onToggleTent(a.id, i); }}
-                      style={{ cursor: isAnSel ? "not-allowed" : "pointer", opacity: isAnSel ? 0.4 : 1 }}
+                      onClick={(e) => { e.stopPropagation(); if (!blocked && !(i === 0 && isHoraContato)) onToggleTent(a.id, i); }}
+                      style={{ cursor: blocked ? "not-allowed" : "pointer", opacity: blocked ? 0.4 : 1 }}
                     >
                       {done ? "✓" : txt}
                     </button>
