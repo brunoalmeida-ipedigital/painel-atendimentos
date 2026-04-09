@@ -20,6 +20,7 @@ export type Database = {
           data_hora: string
           id: string
           licenca: string
+          mensagem: string | null
           nome: string
           notificado: boolean | null
           updated_at: string
@@ -29,6 +30,7 @@ export type Database = {
           data_hora: string
           id?: string
           licenca: string
+          mensagem?: string | null
           nome: string
           notificado?: boolean | null
           updated_at?: string
@@ -38,6 +40,7 @@ export type Database = {
           data_hora?: string
           id?: string
           licenca?: string
+          mensagem?: string | null
           nome?: string
           notificado?: boolean | null
           updated_at?: string
@@ -130,6 +133,45 @@ export type Database = {
           tentativa_atual?: number | null
           tentativas?: boolean[] | null
           ultima_notificacao_retry?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      emails_recebidos: {
+        Row: {
+          assunto: string
+          corpo: string | null
+          created_at: string
+          data_email: string
+          id: string
+          message_id: string | null
+          notificado_slack: boolean | null
+          remetente: string
+          resumo_ia: string | null
+          updated_at: string
+        }
+        Insert: {
+          assunto?: string
+          corpo?: string | null
+          created_at?: string
+          data_email?: string
+          id?: string
+          message_id?: string | null
+          notificado_slack?: boolean | null
+          remetente: string
+          resumo_ia?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assunto?: string
+          corpo?: string | null
+          created_at?: string
+          data_email?: string
+          id?: string
+          message_id?: string | null
+          notificado_slack?: boolean | null
+          remetente?: string
+          resumo_ia?: string | null
           updated_at?: string
         }
         Relationships: []
