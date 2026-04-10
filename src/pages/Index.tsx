@@ -500,6 +500,41 @@ export default function Index() {
 
   // ── Contact message modal state ──
   const [contactModal, setContactModal] = useState<Atendimento | null>(null);
+  const buildResolutionHistory = useCallback((a: Atendimento) => {
+    const tentativasFeitas = (a.tentativas || [])
+      .map((done, index) => done ? `Tentativa ${index + 1}: realizada` : null)
+      .filter(Boolean)
+      .join(" | ");
+
+    return [
+      `Cliente: ${a.cli || "N/A"}`,
+      `Licença: ${a.lic || "N/A"}`,
+      `Telefone: ${a.cel || "N/A"}`,
+      `Categoria: ${a.clas || "N/A"}`,
+      `Demanda: ${a.dem || "N/A"}`,
+      `Status: ${a.stat || "N/A"}`,
+      `Etapa atual: ${a.etapa || "N/A"}`,
+      `Analista: ${a.analista || fAnalista || "N/A"}`,
+      `Hora de contato: ${a.horaContato || "N/A"}`,
+      `Agendado em: ${a.agendadoEm || "N/A"}`,
+      `Comentário do atendimento: ${a.comentario || "N/A"}`,
+      `Histórico de tentativas: ${tentativasFeitas || "N/A"}`,
+    ].join("\n");
+  }, [fAnalista]);
+
+  const generateResolutionMessage = useCallback(async (a: Atendimento) => {
+    const { data: aiData, error } = await supabase.functions.invoke("openrouter-agent", {
+      body: {
+        task: "resolution_summary",
+        payload: {
+          historico_chamado: buildResolutionHistory(a),
+        },
+      },
+    });
+
+    if (error) throw error;
+    return aiData?.data?.mensagem_resolucao as string | undefined;
+  }, [buildResolutionHistory]);
 
   // ── Actions ──
   const updateCard = async (id: string, changes: Partial<Atendimento>) => {
@@ -577,6 +612,23 @@ export default function Index() {
       } catch (e: any) {
         console.warn("Erro ao preencher campos FINALIZADO:", e.message);
         toast("⚠ Etapa movida, mas erro ao preencher campos automáticos");
+      }
+    }
+
+    if (changes.etapa && (changes.etapa.toUpperCase().includes("FINALIZADO") || changes.etapa.toUpperCase().includes("CONCLU"))) {
+      try {
+        const atendimentoBase = prev ? ({ ...prev, ...changes } as Atendimento) : data.find(c => c.id === id);
+        if (atendimentoBase) {
+          const mensagemResolucao = await generateResolutionMessage(atendimentoBase);
+          if (mensagemResolucao) {
+            await pipefyComment(id, `✅ Mensagem de Resolução: ${mensagemResolucao}`);
+            setData(p => p.map(c => c.id === id ? { ...c, comentario: mensagemResolucao } : c));
+            toast("âœ… Mensagem de resoluÃ§Ã£o gerada automaticamente!");
+          }
+        }
+      } catch (e: any) {
+        console.warn("Erro ao gerar mensagem de resoluÃ§Ã£o:", e.message);
+        toast("âš  Etapa concluÃ­da, mas a IA nÃ£o gerou a mensagem de resoluÃ§Ã£o");
       }
     }
   };
