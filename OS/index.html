@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Central de Atendimentos Pipefy</title>
+    <style>
+      html, body {
+        margin: 0;
+        background: #cfd4da;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      (() => {
+        const colorMap = new Map([
+          ['#080f1a', '#d7dbe0'],
+          ['#0a1222', '#c7ccd3'],
+          ['#0a1628', '#d9dde2'],
+          ['#0d1f38', '#b8bec6'],
+          ['#0f1923', '#e2e5e9'],
+          ['#0f1f36', '#c5cad1'],
+          ['#131f35', '#aeb5bd'],
+          ['#1d4ed8', '#8f98a3'],
+          ['#1e3a5f', '#9aa2ab'],
+          ['#1f2937', '#7e8791'],
+          ['#3b82f6', '#c0c6cc'],
+          ['#475569', '#7f8790'],
+          ['#6366f1', '#cfd4da'],
+          ['#64748b', '#8d959e'],
+          ['#7dd3fc', '#eef1f4'],
+          ['#8b5cf6', '#bcc2c9'],
+          ['#94a3b8', '#707883'],
+          ['#a1a1aa', '#737a82'],
+          ['#e2e8f0', '#36404a'],
+          ['#f1f5f9', '#2e3740'],
+          ['#022c22', '#c9cdd1'],
+          ['#02633d', '#b8bec5'],
+          ['#059669', '#aeb5bc'],
+          ['#22c55e', '#d8dde2'],
+          ['#34d399', '#eceff2'],
+          ['#052e16', '#d4d8dd'],
+          ['#07100a', '#dde1e5'],
+          ['#081a0e', '#d3d8dd'],
+          ['#0a1a0e', '#ced3d8'],
+          ['#0e2018', '#b1b8bf'],
+          ['#14532d', '#9aa1a9'],
+          ['#166534', '#939aa3'],
+          ['#1a4d2e', '#878f98'],
+          ['#86efac', '#49525b'],
+          ['#0d0808', '#e2e5e8'],
+          ['#1a0808', '#d4d8dc'],
+          ['#3f1515', '#b0b6bd'],
+          ['#450a0a', '#c3c8ce'],
+          ['#7f1d1d', '#8c949d'],
+          ['#991b1b', '#858d97'],
+          ['#ef4444', '#a7afb7'],
+          ['#f87171', '#959da6'],
+          ['#fca5a5', '#59626c'],
+          ['#422006', '#c9cdd1'],
+          ['#92400e', '#9ea6ae'],
+          ['#f59e0b', '#b1b8bf'],
+          ['#fcd34d', '#737b84'],
+          ['rgba(59,130,246,0.06)', 'rgba(192,198,204,0.22)'],
+          ['rgba(59,130,246,0.09)', 'rgba(192,198,204,0.28)'],
+          ['rgba(99,102,241,0.09)', 'rgba(207,212,218,0.30)'],
+          ['rgba(34,197,94,0.06)', 'rgba(216,221,226,0.24)'],
+          ['rgba(34,197,94,0.09)', 'rgba(216,221,226,0.30)'],
+          ['rgba(34,197,94,0.12)', 'rgba(216,221,226,0.34)'],
+          ['rgba(239,68,68,0.07)', 'rgba(176,182,189,0.24)'],
+          ['rgba(239,68,68,0.09)', 'rgba(176,182,189,0.30)'],
+          ['rgba(245,158,11,0.09)', 'rgba(177,184,191,0.30)'],
+          ['rgba(139,92,246,0.09)', 'rgba(188,194,201,0.30)']
+        ]);
+
+        const replaceColors = (value) => {
+          if (!value) return value;
+          let result = value;
+          for (const [from, to] of colorMap.entries()) {
+            result = result.replaceAll(from, to);
+          }
+          return result;
+        };
+
+        const paintSilver = (root) => {
+          const nodes = root.querySelectorAll ? [root, ...root.querySelectorAll('*')] : [root];
+          for (const node of nodes) {
+            if (!(node instanceof HTMLElement)) continue;
+            const style = node.getAttribute('style');
+            if (style) {
+              const next = replaceColors(style);
+              if (next !== style) node.setAttribute('style', next);
+            }
+          }
+        };
+
+        const observer = new MutationObserver((mutations) => {
+          for (const mutation of mutations) {
+            if (mutation.type === 'childList') {
+              mutation.addedNodes.forEach((node) => {
+                if (node instanceof HTMLElement) paintSilver(node);
+              });
+            }
+            if (mutation.type === 'attributes' && mutation.target instanceof HTMLElement) {
+              paintSilver(mutation.target);
+            }
+          }
+        });
+
+        const start = () => {
+          paintSilver(document.body);
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['style']
+          });
+        };
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', start, { once: true });
+        } else {
+          start();
+        }
+      })();
+    </script>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
