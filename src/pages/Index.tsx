@@ -637,20 +637,9 @@ export default function Index() {
     const a = data.find(x => x.id === id);
     if (!a || a.encerrado) return;
     const nt = [...a.tentativas];
-    const currentCount = nt.filter(Boolean).length;
-    // Block if already at max 6 and trying to add more
-    if (currentCount >= 6 && !nt[i]) {
-      toast("⛔ Limite de 6 tentativas atingido!");
-      return;
-    }
+    // Mantém "1º contato" (índice 0) com sua lógica original via fluxo de etapa.
+    // Tentativas 2 a 6: simples toggle, sem efeitos colaterais.
     nt[i] = !nt[i];
-    if (i === 2 && nt[2]) {
-      toast("📵 3ª tentativa! Considere encerrar.");
-      pipefyComment(id, `📵 3ª tentativa de contato sem sucesso | Analista: ${a.analista || fAnalista} | ${new Date().toLocaleString("pt-BR")}`);
-    }
-    if (nt.filter(Boolean).length >= 6) {
-      toast("⛔ 6ª tentativa atingida! Fluxo de retentativa encerrado.");
-    }
     updateCard(id, { tentativas: nt });
   };
 
