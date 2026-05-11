@@ -834,54 +834,67 @@ export default function Index() {
         </div>
       </div>
 
-      {/* Attendance list */}
-      <div className="space-y-1 mb-8">
-        {filtered.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">Nenhum atendimento encontrado.</div>
-        ) : (
-          filtered.map((a, i) => (
-            <AttendanceCard
-              key={a.id}
-              item={a}
-              index={i}
-              now={now}
-              onUpdateCard={updateCard}
-              onComment={(id, text) => setComent({ id, text })}
-              onEdit={item => setModEdit({ ...item })}
-              onCopyMsg={copyContactMsg}
-              onToggleTent={tent}
-              fAnalista={fAnalista}
-            />
-          ))
-        )}
-      </div>
+      {/* Kanban board */}
+      {(() => {
+        const KANBAN_ETAPAS = [
+          "Caixa de entrada",
+          "Analista Selecionado",
+          "Hora primeiro contato - TMR",
+          "Cliente Agendado/Reagendado",
+          "Em Configuração",
+          "Parado",
+        ];
+        const todos = [...filtered, ...agendados];
+        const grouped: Record<string, Atendimento[]> = {};
+        KANBAN_ETAPAS.forEach(e => { grouped[e] = []; });
+        const outros: Atendimento[] = [];
+        todos.forEach(a => {
+          const match = KANBAN_ETAPAS.find(e => (a.etapa || "").toLowerCase().includes(e.toLowerCase().slice(0, 10)));
+          if (match) grouped[match].push(a);
+          else outros.push(a);
+        });
+        if (outros.length) grouped["Outros"] = outros;
+        const cols = Object.keys(grouped);
 
-      {/* Agendados Section */}
-      {agendados.length > 0 && (
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-lg">📅</span>
-            <h2 className="text-base font-bold text-foreground">Agendados</h2>
-            <span className="text-xs bg-vintage-yellow/20 text-vintage-yellow font-bold px-2 py-0.5 rounded-full">{agendados.length}</span>
+        return (
+          <div className="mb-8 overflow-x-auto pb-3">
+            <div className="flex gap-3 min-w-fit">
+              {cols.map(col => (
+                <div key={col} className="w-[300px] flex-shrink-0 bg-card-alt/50 border border-border rounded-xl p-2.5 flex flex-col">
+                  <div className="flex items-center justify-between px-1 pb-2 mb-1.5 border-b border-border">
+                    <h3 className="text-xs font-bold text-foreground uppercase tracking-wide truncate">
+                      {col}
+                    </h3>
+                    <span className="text-[0.65rem] font-bold bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                      {grouped[col].length}
+                    </span>
+                  </div>
+                  <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
+                    {grouped[col].length === 0 ? (
+                      <div className="text-center py-6 text-[0.7rem] text-muted-foreground">Vazio</div>
+                    ) : (
+                      grouped[col].map((a, i) => (
+                        <AttendanceCard
+                          key={a.id}
+                          item={a}
+                          index={i}
+                          now={now}
+                          onUpdateCard={updateCard}
+                          onComment={(id, text) => setComent({ id, text })}
+                          onEdit={item => setModEdit({ ...item })}
+                          onCopyMsg={copyContactMsg}
+                          onToggleTent={tent}
+                          fAnalista={fAnalista}
+                        />
+                      ))
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="space-y-1.5">
-            {agendados.map((a, i) => (
-              <AttendanceCard
-                key={a.id}
-                item={a}
-                index={i}
-                now={now}
-                onUpdateCard={updateCard}
-                onComment={(id, text) => setComent({ id, text })}
-                onEdit={item => setModEdit({ ...item })}
-                onCopyMsg={copyContactMsg}
-                onToggleTent={tent}
-                fAnalista={fAnalista}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* New attendance form */}
       <div className="bg-card border border-border rounded-xl p-5 mb-6">
