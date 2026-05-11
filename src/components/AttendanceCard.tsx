@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
+import { useState, useEffect } from "react";
 
 // ── Config ──
 const ETAPAS = [
@@ -7,29 +6,10 @@ const ETAPAS = [
   "Cliente Agendado/Reagendado", "Parado", "Em Configuração",
   "FINALIZADO EM", "Arquivado", "Concluído"
 ];
-const ETAPAS_ABR: Record<string, string> = {
-  "Caixa de entrada": "Cx. Entrada", "Analista Selecionado": "An. Selec.",
-  "Hora primeiro contato - TMR": "1º Contato", "Cliente Agendado/Reagendado": "Agenda/Reagd",
-  "Parado": "Parado", "Em Configuração": "Em Config.",
-  "FINALIZADO EM": "Finalizado", "Arquivado": "Arquivado", "Concluído": "Concluído"
-};
 const CCOR: Record<string, string> = {
   NFe: "badge-nfe", "NFe SC": "badge-nfesc", "Boleto Fácil": "badge-bol",
   "Boleto Tradicional": "badge-bolt", TEF: "badge-tef", Impressora: "badge-imp", Etiqueta: "badge-eti",
 };
-
-const TENT_COLORS_PRIMARY = [
-  "bg-primary border-primary text-primary-foreground",
-  "bg-primary border-primary text-primary-foreground",
-  "bg-primary border-primary text-primary-foreground",
-];
-const TENT_COLORS_SECONDARY = [
-  "bg-accent/60 border-accent text-accent-foreground",
-  "bg-vintage-yellow/40 border-vintage-yellow text-foreground",
-  "bg-vintage-blue/30 border-vintage-blue text-foreground",
-  "bg-sage/40 border-sage text-foreground",
-  "bg-terracotta/30 border-terracotta text-foreground",
-];
 
 const p2 = (n: number) => String(n).padStart(2, "0");
 const fmt = (ms: number) => {
@@ -39,15 +19,6 @@ const fmt = (ms: number) => {
   const s = Math.floor((ms % 60000) / 1000);
   if (h >= 24) { const d = Math.floor(h / 24); return `${d}d ${p2(h % 24)}:${p2(m)}:${p2(s)}`; }
   return `${p2(h)}:${p2(m)}:${p2(s)}`;
-};
-const fmtM = (ms: number, etapa?: string) => {
-  if (etapa && !etapa.toLowerCase().includes("analista selecionado")) return "—";
-  if (!ms || isNaN(ms)) return "—";
-  if (ms <= 0) return "Vencido!";
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  if (h >= 24) { const d = Math.floor(h / 24); return `${d}d ${h % 24}h`; }
-  return h > 0 ? `${h}h ${p2(m)}m` : `${m}m ${Math.floor((ms % 60000) / 1000)}s`;
 };
 
 const LIM = 4 * 3600000;
@@ -95,290 +66,212 @@ const parseDate = (val: string | null | undefined) => {
   if (!val) return null;
   const d = new Date(val);
   if (!isNaN(d.getTime())) return d;
-  if (typeof val === "string" && val.includes("/")) {
-    const [datePart, timePart] = val.split(" ");
-    const [day, month, year] = datePart.split("/");
-    const iso = `${year}-${month}-${day}${timePart ? "T" + timePart : ""}`;
-    const d2 = new Date(iso);
-    if (!isNaN(d2.getTime())) return d2;
-  }
   return null;
 };
 
-export default function AttendanceCard({ item: a, index, now, onUpdateCard, onComment, onEdit, onCopyMsg, onToggleTent, fAnalista }: Props) {
-  const [expanded, setExpanded] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [contentHeight, setContentHeight] = useState(0);
-
-  useEffect(() => {
-    if (contentRef.current) {
-      setContentHeight(contentRef.current.scrollHeight);
-    }
-  }, [expanded, a]);
-
+export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onCopyMsg, onToggleTent, fAnalista }: Props) {
   const nowTs = now.getTime();
   const ab = a.abertoEm || nowTs;
   const el = a.encerrado ? (a.encerradoEm || nowTs) - ab : nowTs - ab;
   const rest = LIM - el;
-  const pct = Math.min(100, Math.round((el / LIM) * 100));
-  const cor = rest <= AV10 ? "hsl(var(--red))" : rest <= AV20 ? "hsl(var(--yellow))" : "hsl(var(--green))";
 
   const isVencido = rest < 0;
-  const timeClass = a.encerrado ? "text-muted-foreground" : isVencido ? "text-destructive" : rest <= AV10 ? "text-destructive" : rest <= AV20 ? "text-vintage-yellow" : "text-vintage-green";
+  const timeClass = a.encerrado
+    ? "text-muted-foreground"
+    : isVencido || rest <= AV10
+      ? "text-destructive"
+      : rest <= AV20
+        ? "text-yellow-400"
+        : "text-emerald-400";
 
-  const isZebra = index % 2 === 1;
+  // Ensure 6 tentativas
+  const tentativas = [...(a.tentativas || [])];
+  while (tentativas.length < 6) tentativas.push(false);
+
+  // 1º contato (índice 0) — comportamento preservado
+  const isHoraContato = (a.etapa || "").toLowerCase().includes("hora primeiro contato");
   const ela = nowTs - (a.abertoEm || 0);
 
-  // Ensure 8 tentativas
-  const tentativas = [...(a.tentativas || [])];
-  while (tentativas.length < 8) tentativas.push(false);
-  const tentativasFeitas = tentativas.filter(Boolean).length;
-  const MAX_TENTATIVAS = 6;
-  const atingiuLimite = tentativasFeitas >= MAX_TENTATIVAS;
+  // Local notes state with dirty flag
+  const [notes, setNotes] = useState(a.comentario || "");
+  const [dirty, setDirty] = useState(false);
 
-  // Agendado info
+  useEffect(() => {
+    if (!dirty) setNotes(a.comentario || "");
+  }, [a.comentario, dirty]);
+
+  const handleSave = () => {
+    onUpdateCard(a.id, { comentario: notes });
+    setDirty(false);
+  };
+
   const isAgendado = (a.etapa || "").toLowerCase().includes("agendado");
   const agendadoDate = parseDate(a.agendadoEm || a.horaContato);
 
   return (
     <div
-      className={`rounded-md border transition-all duration-200 cursor-pointer ${
-        isZebra ? "bg-card-alt" : "bg-card"
-      } ${a.encerrado ? "opacity-60" : ""} ${
-        a.dem === "Alta" && !a.encerrado ? "border-l-[3px] border-l-destructive" : "border-border"
-      } hover:shadow-medium`}
+      className={`rounded-xl border bg-card border-border p-3 flex flex-col gap-2 transition-all hover:border-primary/50 ${
+        a.encerrado ? "opacity-60" : ""
+      } ${a.dem === "Alta" && !a.encerrado ? "ring-1 ring-destructive/40" : ""}`}
       style={{ boxShadow: "var(--shadow-card)" }}
     >
-      {/* Compact header */}
-      <div
-        className="flex items-center gap-2 px-3 py-1.5 select-none"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <div
-          className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-            a.dem === "Alta" ? "bg-destructive" : "bg-vintage-yellow"
-          }`}
-          title={a.dem}
-        />
-
-        <div className="flex-1 min-w-0">
-          <span className="font-bold text-foreground text-sm truncate block" title={a.cli}>
-            {a.cli || "—"}
-          </span>
-        </div>
-
-        {/* Tentativas inline */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <span className={`text-[0.6rem] font-bold px-1 py-0.5 rounded ${atingiuLimite ? "bg-destructive/20 text-destructive" : "text-muted-foreground"}`}>
-            {tentativasFeitas}/{MAX_TENTATIVAS}
-          </span>
-          <div className="flex gap-0.5">
-            {tentativas.slice(0, MAX_TENTATIVAS).map((done, i) => {
-              const isPrimary = i < 3;
-              let bg = "bg-muted border-border text-muted-foreground";
-              if (done) {
-                bg = isPrimary
-                  ? TENT_COLORS_PRIMARY[i]
-                  : TENT_COLORS_SECONDARY[i - 3] || "bg-muted-foreground border-muted-foreground text-background";
-              }
-              return (
-                <button
-                  key={i}
-                  className={`w-5 h-5 rounded text-[0.55rem] font-bold border flex items-center justify-center transition-all ${bg}`}
-                  onClick={(e) => { e.stopPropagation(); if (!atingiuLimite || done) onToggleTent(a.id, i); }}
-                  title={`Tentativa ${i + 1}${atingiuLimite && !done ? " (limite atingido)" : ""}`}
-                  style={{ cursor: atingiuLimite && !done ? "not-allowed" : "pointer", opacity: atingiuLimite && !done ? 0.4 : 1 }}
-                >
-                  {done ? "✓" : i + 1}
-                </button>
-              );
-            })}
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className={`w-1.5 h-1.5 rounded-full ${a.dem === "Alta" ? "bg-destructive" : "bg-yellow-400"}`} />
+            <span className="font-mono text-[0.65rem] font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+              {a.lic}
+            </span>
+            <span className={`text-[0.6rem] font-bold px-1.5 py-0.5 rounded ${CCOR[a.clas] || "badge-nfe"}`}>
+              {a.clas}
+            </span>
           </div>
+          <div className="font-semibold text-sm text-foreground truncate" title={a.cli}>
+            {a.cli || "—"}
+          </div>
+          {a.analista && (
+            <div className="text-[0.65rem] text-muted-foreground truncate">👤 {a.analista}</div>
+          )}
         </div>
-
-        {/* Agendado badge */}
-        {isAgendado && agendadoDate && (
-          <span className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded bg-vintage-yellow/20 text-vintage-yellow flex-shrink-0" title="Agendamento">
-            📅 {agendadoDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} {agendadoDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-          </span>
-        )}
-
-        <div className="flex-shrink-0">
-          <span className="font-mono text-xs font-semibold text-brown-light bg-sand px-2 py-0.5 rounded">
-            {a.lic}
-          </span>
+        <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+          <span className={`font-mono text-[0.7rem] font-bold ${timeClass}`}>{fmt(el)}</span>
+          {isAgendado && agendadoDate && (
+            <span className="text-[0.6rem] font-bold px-1 py-0.5 rounded bg-yellow-400/15 text-yellow-400">
+              📅 {agendadoDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} {agendadoDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
         </div>
+      </div>
 
-        <div className="flex-shrink-0 min-w-[80px] text-right">
-          <span className={`font-mono text-xs font-bold ${timeClass}`}>
-            {fmt(el)}
-          </span>
+      {/* Etapa selector */}
+      {!a.encerrado && (
+        <select
+          className="text-[0.7rem] bg-muted border border-border rounded px-2 py-1 text-foreground outline-none focus:border-primary w-full"
+          value={a.etapa}
+          onChange={(e) => {
+            const newEtapa = e.target.value;
+            const changes: Partial<Atendimento> = { etapa: newEtapa };
+            if (newEtapa.toLowerCase().includes("hora primeiro contato")) {
+              const nt = [...tentativas];
+              nt[0] = true;
+              changes.tentativas = nt;
+            }
+            onUpdateCard(a.id, changes);
+          }}
+        >
+          {ETAPAS.map((e) => (<option key={e} value={e}>{e}</option>))}
+          {!ETAPAS.includes(a.etapa) && <option value={a.etapa}>{a.etapa}</option>}
+        </select>
+      )}
+
+      {/* Tentativas — 1º contato preservado + checkboxes simples 2 a 6 */}
+      <div>
+        <div className="text-[0.6rem] uppercase font-bold text-muted-foreground tracking-wider mb-1">
+          Tentativas de contato
         </div>
+        <div className="flex gap-1.5 flex-wrap">
+          {/* 1º contato — lógica original */}
+          {(() => {
+            const done = tentativas[0];
+            let cls = "bg-muted border-border text-muted-foreground";
+            let label: string = "1";
+            if (isHoraContato) {
+              cls = ela > 8 * 3600000
+                ? "bg-destructive border-destructive text-destructive-foreground"
+                : "bg-emerald-500 border-emerald-500 text-white";
+              label = "✓";
+            } else if (done) {
+              cls = "bg-primary border-primary text-primary-foreground";
+              label = "✓";
+            }
+            return (
+              <button
+                key={0}
+                title="1º contato"
+                className={`w-9 h-9 rounded-md text-[0.7rem] font-bold border flex items-center justify-center transition-all ${cls}`}
+                onClick={() => { if (!isHoraContato) onToggleTent(a.id, 0); }}
+                style={{ cursor: isHoraContato ? "not-allowed" : "pointer", opacity: isHoraContato ? 0.85 : 1 }}
+              >
+                {label}
+              </button>
+            );
+          })()}
 
-        <span className={`text-[0.65rem] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${CCOR[a.clas] || "badge-nfe"}`}>
-          {a.clas}
-        </span>
+          {/* Tentativas 2 a 6 — apenas toggle simples */}
+          {[1, 2, 3, 4, 5].map((i) => {
+            const done = tentativas[i];
+            return (
+              <label
+                key={i}
+                className={`w-9 h-9 rounded-md text-[0.7rem] font-bold border flex items-center justify-center cursor-pointer transition-all select-none ${
+                  done
+                    ? "bg-primary border-primary text-primary-foreground"
+                    : "bg-muted border-border text-muted-foreground hover:border-primary/50"
+                }`}
+                title={`Tentativa ${i + 1}`}
+              >
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={!!done}
+                  onChange={() => onToggleTent(a.id, i)}
+                />
+                {done ? "✓" : i + 1}
+              </label>
+            );
+          })}
+        </div>
+      </div>
 
-        <ChevronDown
-          className={`w-4 h-4 text-muted-foreground transition-transform duration-300 flex-shrink-0 ${
-            expanded ? "rotate-180" : ""
-          }`}
+      {/* Anotações */}
+      <div>
+        <div className="text-[0.6rem] uppercase font-bold text-muted-foreground tracking-wider mb-1">
+          Anotações
+        </div>
+        <textarea
+          value={notes}
+          onChange={(e) => { setNotes(e.target.value); setDirty(true); }}
+          placeholder="Escreva informações livres..."
+          className="w-full min-h-[80px] text-xs bg-muted border border-border rounded-md px-2 py-1.5 text-foreground outline-none focus:border-primary resize-y"
         />
       </div>
 
-      {/* Expandable details */}
-      <div
-        ref={contentRef}
-        className="overflow-hidden transition-all duration-300 ease-in-out"
-        style={{
-          maxHeight: expanded ? `${contentHeight}px` : "0px",
-          opacity: expanded ? 1 : 0,
-        }}
-      >
-        <div className="px-4 pb-4 pt-1 border-t border-border/50">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm mb-3">
-            <div>
-              <span className="text-[0.65rem] uppercase font-bold text-muted-foreground tracking-wider block">Analista</span>
-              <span className="font-medium text-foreground truncate block" title={a.analista}>{a.analista || "—"}</span>
-            </div>
-            <div>
-              <span className="text-[0.65rem] uppercase font-bold text-muted-foreground tracking-wider block">Celular</span>
-              <span className="font-medium text-foreground">{a.cel || "—"}</span>
-            </div>
-            <div>
-              <span className="text-[0.65rem] uppercase font-bold text-muted-foreground tracking-wider block">Classificação</span>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded inline-block mt-0.5 ${CCOR[a.clas] || "badge-nfe"}`}>{a.clas}</span>
-            </div>
-            <div>
-              <span className="text-[0.65rem] uppercase font-bold text-muted-foreground tracking-wider block">Demanda</span>
-              <span className={`font-semibold text-xs ${a.dem === "Alta" ? "text-destructive" : "text-vintage-yellow"}`}>
-                {a.dem === "Alta" ? "🔴 Alta" : "🟡 Média"}
-              </span>
-            </div>
-            <div>
-              <span className="text-[0.65rem] uppercase font-bold text-muted-foreground tracking-wider block">Etapa</span>
-              {a.encerrado ? (
-                <span className="text-xs text-muted-foreground">{ETAPAS_ABR[a.etapa] || a.etapa}</span>
-              ) : (
-                <select
-                  className="text-xs bg-muted border border-border rounded px-1.5 py-1 text-foreground outline-none focus:border-primary w-full mt-0.5"
-                  value={a.etapa}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={(e) => {
-                    const newEtapa = e.target.value;
-                    const changes: Partial<Atendimento> = { etapa: newEtapa };
-                    if (newEtapa.toLowerCase().includes("hora primeiro contato")) {
-                      const nt = [...tentativas];
-                      nt[0] = true;
-                      changes.tentativas = nt;
-                    }
-                    onUpdateCard(a.id, changes);
-                  }}
-                >
-                  {ETAPAS.map((e) => (<option key={e} value={e}>{ETAPAS_ABR[e] || e}</option>))}
-                  {!ETAPAS.includes(a.etapa) && <option value={a.etapa}>{a.etapa}</option>}
-                </select>
-              )}
-            </div>
-            {/* Agendamento info */}
-            {isAgendado && (
-              <div>
-                <span className="text-[0.65rem] uppercase font-bold text-muted-foreground tracking-wider block">Agendamento</span>
-                {agendadoDate ? (
-                  <span className="text-xs font-bold text-vintage-yellow">
-                    📅 {agendadoDate.toLocaleDateString("pt-BR")} às {agendadoDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                ) : (
-                  <span className="text-xs text-muted-foreground">Sem data definida</span>
-                )}
-              </div>
-            )}
-            {/* Tentativas */}
-            <div className={isAgendado ? "" : "md:col-span-1"}>
-              <span className="text-[0.65rem] uppercase font-bold text-muted-foreground tracking-wider block">
-                Tentativas ({tentativasFeitas}/{MAX_TENTATIVAS})
-                {atingiuLimite && <span className="text-destructive ml-1">⛔ Limite!</span>}
-              </span>
-              <div className="flex gap-1 mt-1 flex-wrap">
-                {tentativas.slice(0, MAX_TENTATIVAS).map((done, i) => {
-                  const isPrimary = i < 3;
-                  const isAnSel = (a.etapa || "").toLowerCase().includes("analista selecionado");
-                  const isHoraContato = (a.etapa || "").toLowerCase().includes("hora do primeiro contato");
-                  let bg = "bg-muted border-border";
-                  let txt = String(i + 1);
-
-                  if (i === 0 && isHoraContato) {
-                    bg = ela > 8 * 3600000 ? "bg-destructive border-destructive text-destructive-foreground" : "bg-vintage-green border-vintage-green text-primary-foreground";
-                    txt = "✓";
-                  } else if (done) {
-                    bg = isPrimary
-                      ? TENT_COLORS_PRIMARY[i]
-                      : TENT_COLORS_SECONDARY[i - 3] || "bg-muted-foreground border-muted-foreground text-background";
-                  }
-
-                  const blocked = isAnSel || (atingiuLimite && !done);
-
-                  return (
-                    <button
-                      key={i}
-                      className={`w-6 h-6 rounded text-[0.65rem] font-bold border flex items-center justify-center transition-all ${bg}`}
-                      onClick={(e) => { e.stopPropagation(); if (!blocked && !(i === 0 && isHoraContato)) onToggleTent(a.id, i); }}
-                      style={{ cursor: blocked ? "not-allowed" : "pointer", opacity: blocked ? 0.4 : 1 }}
-                    >
-                      {done ? "✓" : txt}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Prazo 4h */}
-          {(a.etapa || "").toLowerCase().includes("analista selecionado") && !a.encerrado && (
-            <div className="mb-3">
-              <span className="text-[0.65rem] uppercase font-bold text-muted-foreground tracking-wider">Prazo 4h</span>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: cor }} />
-                </div>
-                <span className="font-mono text-xs font-bold min-w-[60px] text-right" style={{ color: cor }}>
-                  {fmtM(rest, a.etapa)}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Ações */}
-          <div className="flex items-center gap-1 pt-2 border-t border-border/30">
-            <button
-              className="text-sm px-2 py-1 rounded hover:bg-muted transition-colors"
-              onClick={(e) => { e.stopPropagation(); onComment(a.id, a.comentario || ""); }}
-              title="Comentário"
-            >💬</button>
-            <button
-              className="text-sm px-2 py-1 rounded hover:bg-muted transition-colors"
-              onClick={(e) => { e.stopPropagation(); onEdit(a); }}
-              title="Editar"
-            >✏️</button>
-            <button
-              className="text-sm px-2 py-1 rounded hover:bg-muted transition-colors"
-              onClick={(e) => { e.stopPropagation(); onCopyMsg(a); }}
-              title="Copiar mensagem"
-            >📋</button>
-            <div className="flex-1" />
-            {a.encerrado ? (
-              <button
-                className="text-xs px-3 py-1 rounded bg-vintage-blue/10 text-vintage-blue font-semibold hover:bg-vintage-blue/20 transition-colors"
-                onClick={(e) => { e.stopPropagation(); onUpdateCard(a.id, { etapa: "Analista Selecionado", encerrado: false, encerradoEm: null }); }}
-              >↩ Reabrir</button>
-            ) : (
-              <button
-                className="text-xs px-3 py-1 rounded bg-destructive/10 text-destructive font-semibold hover:bg-destructive/20 transition-colors"
-                onClick={(e) => { e.stopPropagation(); onUpdateCard(a.id, { etapa: "FINALIZADO EM", encerrado: true, encerradoEm: Date.now() }); }}
-              >✕ Encerrar</button>
-            )}
-          </div>
-        </div>
+      {/* Ações */}
+      <div className="flex items-center gap-1.5 pt-1 border-t border-border/50">
+        <button
+          onClick={handleSave}
+          disabled={!dirty}
+          className={`text-xs px-3 py-1.5 rounded-md font-semibold transition-all ${
+            dirty
+              ? "bg-primary text-primary-foreground hover:opacity-90"
+              : "bg-muted text-muted-foreground cursor-not-allowed"
+          }`}
+        >
+          💾 Salvar
+        </button>
+        <button
+          onClick={() => onEdit(a)}
+          className="text-xs px-2 py-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          title="Editar"
+        >✏️</button>
+        <button
+          onClick={() => onCopyMsg(a)}
+          className="text-xs px-2 py-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          title="Copiar mensagem"
+        >📋</button>
+        <div className="flex-1" />
+        {a.encerrado ? (
+          <button
+            className="text-[0.7rem] px-2 py-1 rounded-md bg-blue-500/10 text-blue-400 font-semibold hover:bg-blue-500/20 transition-colors"
+            onClick={() => onUpdateCard(a.id, { etapa: "Analista Selecionado", encerrado: false, encerradoEm: null })}
+          >↩</button>
+        ) : (
+          <button
+            className="text-[0.7rem] px-2 py-1 rounded-md bg-destructive/10 text-destructive font-semibold hover:bg-destructive/20 transition-colors"
+            onClick={() => onUpdateCard(a.id, { etapa: "FINALIZADO EM", encerrado: true, encerradoEm: Date.now() })}
+          >✕ Encerrar</button>
+        )}
       </div>
     </div>
   );
