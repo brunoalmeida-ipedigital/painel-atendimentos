@@ -25,12 +25,12 @@ interface EmailClassification {
 interface EmailRecebido {
   id: string;
   message_id: string | null;
-  thread_id: string | null;
+  thread_id?: string | null;
   remetente: string;
   assunto: string;
   corpo: string;
   resumo_ia: string | null;
-  classificacao_ia: EmailClassification | null;
+  classificacao_ia?: EmailClassification | null;
   data_email: string;
   notificado_slack: boolean;
   created_at: string;
@@ -61,7 +61,7 @@ export default function EmailsPanel() {
       .select("*")
       .order("data_email", { ascending: false })
       .limit(50);
-    setEmails((data as EmailRecebido[]) || []);
+    setEmails(((data as unknown) as EmailRecebido[]) || []);
   };
 
   useEffect(() => {
