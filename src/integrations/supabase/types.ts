@@ -140,7 +140,6 @@ export type Database = {
       emails_recebidos: {
         Row: {
           assunto: string
-          classificacao_ia: Json | null
           corpo: string | null
           created_at: string
           data_email: string
@@ -149,12 +148,10 @@ export type Database = {
           notificado_slack: boolean | null
           remetente: string
           resumo_ia: string | null
-          thread_id: string | null
           updated_at: string
         }
         Insert: {
           assunto?: string
-          classificacao_ia?: Json | null
           corpo?: string | null
           created_at?: string
           data_email?: string
@@ -163,12 +160,10 @@ export type Database = {
           notificado_slack?: boolean | null
           remetente: string
           resumo_ia?: string | null
-          thread_id?: string | null
           updated_at?: string
         }
         Update: {
           assunto?: string
-          classificacao_ia?: Json | null
           corpo?: string | null
           created_at?: string
           data_email?: string
@@ -177,7 +172,6 @@ export type Database = {
           notificado_slack?: boolean | null
           remetente?: string
           resumo_ia?: string | null
-          thread_id?: string | null
           updated_at?: string
         }
         Relationships: []
