@@ -238,7 +238,7 @@ export default function Index() {
   const slackSent = useRef(new Set<string>());
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem("cat_dark");
-    return saved === "true";
+    return saved === null ? true : saved === "true";
   });
 
   const [activeTab, setActiveTab] = useState<"list" | "dashboard" | "agendamentos" | "emails">("list");
