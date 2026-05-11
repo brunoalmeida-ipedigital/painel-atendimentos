@@ -78,19 +78,19 @@
   }
 
   .dark {
-    /* Graphite silver dark theme */
-    --background: 220 10% 13%;
-    --foreground: 220 12% 93%;
+    /* Modern dark — neutral slate + cyan accent */
+    --background: 222 18% 8%;
+    --foreground: 210 20% 96%;
 
-    --card: 220 10% 17%;
-    --card-foreground: 220 12% 93%;
-    --card-alt: 220 10% 21%;
+    --card: 222 16% 12%;
+    --card-foreground: 210 20% 96%;
+    --card-alt: 222 16% 15%;
 
-    --popover: 220 10% 15%;
-    --popover-foreground: 220 12% 93%;
+    --popover: 222 18% 10%;
+    --popover-foreground: 210 20% 96%;
 
-    --primary: 210 10% 70%;
-    --primary-foreground: 220 10% 12%;
+    --primary: 199 89% 58%;
+    --primary-foreground: 222 18% 8%;
 
     --secondary: 220 8% 24%;
     --secondary-foreground: 220 12% 88%;
