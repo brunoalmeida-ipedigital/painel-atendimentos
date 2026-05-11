@@ -68,7 +68,10 @@ Deno.serve(async (req) => {
       }),
     });
     const tokenData = await tokenRes.json();
-    if (!tokenData.access_token) throw new Error("Failed to get Gmail access token");
+    if (!tokenData.access_token) {
+      console.error("Google token response:", JSON.stringify(tokenData));
+      throw new Error(`Failed to get Gmail access token: ${tokenData.error || "unknown"} - ${tokenData.error_description || ""}`);
+    }
     const accessToken = tokenData.access_token;
 
     const listRes = await fetch(
