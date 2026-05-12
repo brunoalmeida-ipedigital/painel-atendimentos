@@ -111,7 +111,7 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
 
   return (
     <div
-      className={`rounded-xl border-2 bg-card border-border p-3 flex flex-col gap-2 transition-all hover:border-primary/60 ${
+      className={`rounded-xl border-2 border-black bg-card p-3 flex flex-col gap-2 transition-all hover:border-primary ${
         a.encerrado ? "opacity-60" : ""
       } ${a.dem === "Alta" && !a.encerrado ? "ring-2 ring-destructive/40" : ""}`}
       style={{ boxShadow: "var(--shadow-card)" }}
