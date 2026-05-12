@@ -838,7 +838,6 @@ export default function Index() {
       {(() => {
         const KANBAN_ETAPAS = [
           "Analista Selecionado",
-          "Caixa de entrada",
           "Hora primeiro contato - TMR",
           "Cliente Agendado/Reagendado",
           "Em Configuração",
