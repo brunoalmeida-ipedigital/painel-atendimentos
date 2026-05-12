@@ -284,6 +284,7 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
           >✕ Encerrar</button>
         )}
       </div>
+      </>)}
     </div>
   );
 }
