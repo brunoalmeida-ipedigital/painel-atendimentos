@@ -300,6 +300,23 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
           placeholder="Escreva informações livres..."
           className="w-full min-h-[80px] text-xs bg-muted border border-border rounded-md px-2 py-1.5 text-foreground outline-none focus:border-primary resize-y"
         />
+        {showTimestamp && (
+          <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+            <span className="text-[0.6rem] uppercase font-bold text-muted-foreground tracking-wider">Salvo em:</span>
+            <input
+              type="date"
+              value={savedDate}
+              onChange={(e) => handleTimestampChange(e.target.value, savedTime)}
+              className="text-[0.7rem] bg-muted border border-border rounded px-1.5 py-0.5 text-foreground outline-none focus:border-primary"
+            />
+            <input
+              type="time"
+              value={savedTime}
+              onChange={(e) => handleTimestampChange(savedDate, e.target.value)}
+              className="text-[0.7rem] bg-muted border border-border rounded px-1.5 py-0.5 text-foreground outline-none focus:border-primary"
+            />
+          </div>
+        )}
       </div>
 
       {/* Ações */}
