@@ -111,31 +111,46 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
 
   return (
     <div
-      className={`rounded-xl border-2 bg-card border-border p-3 flex flex-col gap-2 transition-all hover:border-primary/60 ${
+      className={`rounded-xl border-2 border-black bg-card p-3 flex flex-col gap-2 transition-all hover:border-primary ${
         a.encerrado ? "opacity-60" : ""
       } ${a.dem === "Alta" && !a.encerrado ? "ring-2 ring-destructive/40" : ""}`}
       style={{ boxShadow: "var(--shadow-card)" }}
     >
-      {/* Header — sempre visível (clique para expandir/recolher) */}
-      <button
-        type="button"
-        onClick={() => setExpanded(v => !v)}
-        className="flex items-start justify-between gap-2 text-left w-full"
-        title={expanded ? "Recolher" : "Expandir"}
-      >
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
             <span className={`w-1.5 h-1.5 rounded-full ${a.dem === "Alta" ? "bg-destructive" : "bg-yellow-400"}`} />
-            <span className="font-mono text-[0.65rem] font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(a.lic || ""); }}
+              title="Clique para copiar a licença"
+              className="font-mono text-[0.65rem] font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded hover:bg-primary/20 hover:text-primary transition-colors cursor-pointer"
+            >
               {a.lic}
-            </span>
+            </button>
             <span className={`text-[0.6rem] font-bold px-1.5 py-0.5 rounded ${CCOR[a.clas] || "badge-nfe"}`}>
               {a.clas}
             </span>
           </div>
-          <div className="font-semibold text-sm text-foreground truncate" title={a.cli}>
+          <button
+            type="button"
+            onClick={() => navigator.clipboard.writeText(a.cli || "")}
+            title="Clique para copiar o nome"
+            className="font-semibold text-sm text-foreground truncate text-left w-full hover:text-primary transition-colors cursor-pointer"
+          >
             {a.cli || "—"}
-          </div>
+          </button>
+          {a.cel && (
+            <button
+              type="button"
+              onClick={() => navigator.clipboard.writeText(a.cel || "")}
+              title="Clique para copiar o telefone"
+              className="text-[0.7rem] text-muted-foreground hover:text-primary transition-colors cursor-pointer truncate text-left w-full"
+            >
+              📞 {a.cel}
+            </button>
+          )}
           {expanded && a.analista && (
             <div className="text-[0.65rem] text-muted-foreground truncate">👤 {a.analista}</div>
           )}
@@ -149,9 +164,16 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
               📅 {agendadoDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} {agendadoDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
-          <span className="text-muted-foreground text-[0.7rem]">{expanded ? "▲" : "▼"}</span>
+          <button
+            type="button"
+            onClick={() => setExpanded(v => !v)}
+            className="text-muted-foreground text-[0.75rem] hover:text-foreground px-1"
+            title={expanded ? "Recolher" : "Expandir"}
+          >
+            {expanded ? "▲" : "▼"}
+          </button>
         </div>
-      </button>
+      </div>
 
       {expanded && (<>
 

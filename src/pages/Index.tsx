@@ -838,7 +838,6 @@ export default function Index() {
       {(() => {
         const KANBAN_ETAPAS = [
           "Analista Selecionado",
-          "Caixa de entrada",
           "Hora primeiro contato - TMR",
           "Cliente Agendado/Reagendado",
           "Em Configuração",
@@ -858,7 +857,7 @@ export default function Index() {
 
         return (
           <div className="mb-8">
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               {cols.map(col => {
                 const isPriority = col === "Analista Selecionado";
                 return (
