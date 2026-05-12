@@ -116,10 +116,15 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
       } ${a.dem === "Alta" && !a.encerrado ? "ring-2 ring-destructive/40" : ""}`}
       style={{ boxShadow: "var(--shadow-card)" }}
     >
-      {/* Header */}
-      <div className="flex items-start justify-between gap-2">
+      {/* Header — sempre visível (clique para expandir/recolher) */}
+      <button
+        type="button"
+        onClick={() => setExpanded(v => !v)}
+        className="flex items-start justify-between gap-2 text-left w-full"
+        title={expanded ? "Recolher" : "Expandir"}
+      >
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 mb-0.5">
+          <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
             <span className={`w-1.5 h-1.5 rounded-full ${a.dem === "Alta" ? "bg-destructive" : "bg-yellow-400"}`} />
             <span className="font-mono text-[0.65rem] font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
               {a.lic}
@@ -131,19 +136,24 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
           <div className="font-semibold text-sm text-foreground truncate" title={a.cli}>
             {a.cli || "—"}
           </div>
-          {a.analista && (
+          {expanded && a.analista && (
             <div className="text-[0.65rem] text-muted-foreground truncate">👤 {a.analista}</div>
           )}
         </div>
         <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-          <span className={`font-mono text-[0.7rem] font-bold ${timeClass}`}>{fmt(el)}</span>
-          {isAgendado && agendadoDate && (
+          {expanded && (
+            <span className={`font-mono text-[0.7rem] font-bold ${timeClass}`}>{fmt(el)}</span>
+          )}
+          {expanded && isAgendado && agendadoDate && (
             <span className="text-[0.6rem] font-bold px-1 py-0.5 rounded bg-yellow-400/15 text-yellow-400">
               📅 {agendadoDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} {agendadoDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
+          <span className="text-muted-foreground text-[0.7rem]">{expanded ? "▲" : "▼"}</span>
         </div>
-      </div>
+      </button>
+
+      {expanded && (<>
 
       {/* Etapa selector */}
       {!a.encerrado && (
