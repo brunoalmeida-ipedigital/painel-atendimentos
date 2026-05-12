@@ -720,7 +720,7 @@ export default function Index() {
   const aVencer = memData.filter(a => a && !a.encerrado && (a.etapa || "").toLowerCase().includes("analista selecionado")).sort((a, b) => (a.abertoEm || 0) - (b.abertoEm || 0)).slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-background p-4 md:p-6 max-w-[1800px] mx-auto">
       {/* Topbar */}
       <header className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
