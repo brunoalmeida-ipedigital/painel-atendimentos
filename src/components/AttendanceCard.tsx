@@ -95,6 +95,7 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
   // Local notes state with dirty flag
   const [notes, setNotes] = useState(a.comentario || "");
   const [dirty, setDirty] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (!dirty) setNotes(a.comentario || "");
