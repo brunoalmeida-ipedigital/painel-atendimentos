@@ -720,7 +720,7 @@ export default function Index() {
   const aVencer = memData.filter(a => a && !a.encerrado && (a.etapa || "").toLowerCase().includes("analista selecionado")).sort((a, b) => (a.abertoEm || 0) - (b.abertoEm || 0)).slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-background p-4 md:p-6 max-w-[1800px] mx-auto">
       {/* Topbar */}
       <header className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
@@ -837,8 +837,8 @@ export default function Index() {
       {/* Kanban board */}
       {(() => {
         const KANBAN_ETAPAS = [
-          "Caixa de entrada",
           "Analista Selecionado",
+          "Caixa de entrada",
           "Hora primeiro contato - TMR",
           "Cliente Agendado/Reagendado",
           "Em Configuração",
@@ -857,40 +857,48 @@ export default function Index() {
         const cols = Object.keys(grouped);
 
         return (
-          <div className="mb-8 overflow-x-auto pb-3">
-            <div className="flex gap-3 min-w-fit">
-              {cols.map(col => (
-                <div key={col} className="w-[300px] flex-shrink-0 bg-card-alt/50 border border-border rounded-xl p-2.5 flex flex-col">
-                  <div className="flex items-center justify-between px-1 pb-2 mb-1.5 border-b border-border">
-                    <h3 className="text-xs font-bold text-foreground uppercase tracking-wide truncate">
-                      {col}
-                    </h3>
-                    <span className="text-[0.65rem] font-bold bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
-                      {grouped[col].length}
-                    </span>
+          <div className="mb-8">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              {cols.map(col => {
+                const isPriority = col === "Analista Selecionado";
+                return (
+                  <div
+                    key={col}
+                    className={`min-w-0 bg-card-alt/50 border-2 rounded-xl p-2.5 flex flex-col ${
+                      isPriority ? "border-primary/60 ring-1 ring-primary/30" : "border-border"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between px-1 pb-2 mb-1.5 border-b border-border">
+                      <h3 className={`text-xs font-bold uppercase tracking-wide truncate ${isPriority ? "text-primary" : "text-foreground"}`}>
+                        {isPriority && "⭐ "}{col}
+                      </h3>
+                      <span className="text-[0.65rem] font-bold bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                        {grouped[col].length}
+                      </span>
+                    </div>
+                    <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
+                      {grouped[col].length === 0 ? (
+                        <div className="text-center py-6 text-[0.7rem] text-muted-foreground">Vazio</div>
+                      ) : (
+                        grouped[col].map((a, i) => (
+                          <AttendanceCard
+                            key={a.id}
+                            item={a}
+                            index={i}
+                            now={now}
+                            onUpdateCard={updateCard}
+                            onComment={(id, text) => setComent({ id, text })}
+                            onEdit={item => setModEdit({ ...item })}
+                            onCopyMsg={copyContactMsg}
+                            onToggleTent={tent}
+                            fAnalista={fAnalista}
+                          />
+                        ))
+                      )}
+                    </div>
                   </div>
-                  <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
-                    {grouped[col].length === 0 ? (
-                      <div className="text-center py-6 text-[0.7rem] text-muted-foreground">Vazio</div>
-                    ) : (
-                      grouped[col].map((a, i) => (
-                        <AttendanceCard
-                          key={a.id}
-                          item={a}
-                          index={i}
-                          now={now}
-                          onUpdateCard={updateCard}
-                          onComment={(id, text) => setComent({ id, text })}
-                          onEdit={item => setModEdit({ ...item })}
-                          onCopyMsg={copyContactMsg}
-                          onToggleTent={tent}
-                          fAnalista={fAnalista}
-                        />
-                      ))
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         );
