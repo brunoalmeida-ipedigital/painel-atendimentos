@@ -92,18 +92,50 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
   const isHoraContato = (a.etapa || "").toLowerCase().includes("hora primeiro contato");
   const ela = nowTs - (a.abertoEm || 0);
 
+  // Parse existing notes/timestamp from comentario (format: "notes\n\n[salvo em: YYYY-MM-DD HH:mm]")
+  const parseStored = (raw: string) => {
+    const m = raw.match(/^([\s\S]*?)\n\n\[salvo em: (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})\]\s*$/);
+    if (m) return { text: m[1], date: m[2], time: m[3] };
+    return { text: raw, date: "", time: "" };
+  };
+
   // Local notes state with dirty flag
-  const [notes, setNotes] = useState(a.comentario || "");
+  const initial = parseStored(a.comentario || "");
+  const [notes, setNotes] = useState(initial.text);
+  const [savedDate, setSavedDate] = useState(initial.date);
+  const [savedTime, setSavedTime] = useState(initial.time);
+  const [showTimestamp, setShowTimestamp] = useState(!!initial.date);
   const [dirty, setDirty] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    if (!dirty) setNotes(a.comentario || "");
+    if (!dirty) {
+      const p = parseStored(a.comentario || "");
+      setNotes(p.text);
+      setSavedDate(p.date);
+      setSavedTime(p.time);
+      setShowTimestamp(!!p.date);
+    }
   }, [a.comentario, dirty]);
 
+  const compose = (text: string, date: string, time: string) =>
+    date && time ? `${text}\n\n[salvo em: ${date} ${time}]` : text;
+
   const handleSave = () => {
-    onUpdateCard(a.id, { comentario: notes });
+    const now = new Date();
+    const d = savedDate || `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`;
+    const t = savedTime || `${p2(now.getHours())}:${p2(now.getMinutes())}`;
+    setSavedDate(d);
+    setSavedTime(t);
+    setShowTimestamp(true);
+    onUpdateCard(a.id, { comentario: compose(notes, d, t) });
     setDirty(false);
+  };
+
+  const handleTimestampChange = (d: string, t: string) => {
+    setSavedDate(d);
+    setSavedTime(t);
+    onUpdateCard(a.id, { comentario: compose(notes, d, t) });
   };
 
   const isAgendado = (a.etapa || "").toLowerCase().includes("agendado");
