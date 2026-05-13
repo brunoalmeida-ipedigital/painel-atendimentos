@@ -4,6 +4,7 @@ import AttendanceCard, { type Atendimento } from "@/components/AttendanceCard";
 import Dashboard from "@/components/Dashboard";
 import AgendamentosPanel from "@/components/AgendamentosPanel";
 import EmailsPanel from "@/components/EmailsPanel";
+import NotesPanel from "@/components/NotesPanel";
 
 // ── Config ────────────────────────────────────────────────────────
 const PIPE_ID = "823783";
