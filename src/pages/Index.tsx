@@ -4,6 +4,7 @@ import AttendanceCard, { type Atendimento } from "@/components/AttendanceCard";
 import Dashboard from "@/components/Dashboard";
 import AgendamentosPanel from "@/components/AgendamentosPanel";
 import EmailsPanel from "@/components/EmailsPanel";
+import NotesPanel from "@/components/NotesPanel";
 
 // ── Config ────────────────────────────────────────────────────────
 const PIPE_ID = "823783";
@@ -935,6 +936,9 @@ export default function Index() {
           <button onClick={addAt} className="bg-primary text-primary-foreground text-sm font-bold rounded-lg px-4 py-2 hover:opacity-90 transition-opacity">Adicionar ＋</button>
         </div>
       </div>
+
+      {/* Painel de anotações livre */}
+      <NotesPanel />
       </>
       )}
 
