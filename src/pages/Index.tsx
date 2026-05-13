@@ -936,6 +936,9 @@ export default function Index() {
           <button onClick={addAt} className="bg-primary text-primary-foreground text-sm font-bold rounded-lg px-4 py-2 hover:opacity-90 transition-opacity">Adicionar ＋</button>
         </div>
       </div>
+
+      {/* Painel de anotações livre */}
+      <NotesPanel />
       </>
       )}
 
