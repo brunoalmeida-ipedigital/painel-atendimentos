@@ -316,6 +316,8 @@ export default function Index() {
         pIds[ph.name] = ph.id;
         const isEncerrado = !!ph.done || Array.from(DONE_PHASES).some(d => d.toLowerCase() === (ph.name || "").toLowerCase());
         (ph.cards?.edges || []).forEach(({ node: c }: any) => {
+          // Carrega somente os atendimentos do analista BRUNO
+          if ((getAnalista(c) || "").toUpperCase() !== "BRUNO") return;
           const lic = fieldVal(c, "Código da Licença", "licenca") || c.title?.split(" - ")[0]?.trim() || c.id.slice(-6).toUpperCase();
           const cli = fieldVal(c, "Nome do Cliente", "nome") || c.title?.trim() || "";
           let clas = fieldVal(c, "CATEGORIA - CONFIGURAÇÃO", "CATEGORIA - ERRO", "CATEGORIA CHAMADO", "CATEGORIA");
