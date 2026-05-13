@@ -18,8 +18,17 @@ const ETAPAS = [
 ];
 
 const CHEX: Record<string, string> = {
-  NFe: "#2563eb", "NFe SC": "#7c3aed", "Boleto Fácil": "#0891b2",
-  "Boleto Tradicional": "#0369a1", TEF: "#15803d", Impressora: "#ea580c", Etiqueta: "#d97706",
+  "NFC/NFe": "#2563eb", "NFe": "#2563eb", "NFC-SC": "#7c3aed", "NFe SC": "#7c3aed",
+  "SAT": "#16a34a", "MFe": "#0d9488",
+  "Boleto Fácil": "#0891b2", "Boleto Tradicional": "#0369a1",
+  "ECF": "#65a30d", "TEF": "#15803d",
+  "Impressora Térmica": "#ea580c", "Impressora": "#ea580c",
+  "Etiquetas": "#d97706", "Etiqueta": "#d97706",
+  "Whatsapp": "#22c55e", "Equipamento POS": "#a855f7", "POS": "#a855f7",
+  "Conciliadora": "#db2777", "Máquina recorte": "#7c2d12",
+  "Ótica Zap Pro": "#9333ea", "Tablet": "#0ea5e9",
+  "XML": "#475569", "Sistema ssOtica": "#1e40af", "ssOtica": "#1e40af",
+  "Pjbank": "#be123c", "Outros": "#64748b",
 };
 
 const LIM = 4 * 3600000;
@@ -307,6 +316,8 @@ export default function Index() {
         pIds[ph.name] = ph.id;
         const isEncerrado = !!ph.done || Array.from(DONE_PHASES).some(d => d.toLowerCase() === (ph.name || "").toLowerCase());
         (ph.cards?.edges || []).forEach(({ node: c }: any) => {
+          // Carrega somente os atendimentos do analista BRUNO
+          if ((getAnalista(c) || "").toUpperCase() !== "BRUNO") return;
           const lic = fieldVal(c, "Código da Licença", "licenca") || c.title?.split(" - ")[0]?.trim() || c.id.slice(-6).toUpperCase();
           const cli = fieldVal(c, "Nome do Cliente", "nome") || c.title?.trim() || "";
           let clas = fieldVal(c, "CATEGORIA - CONFIGURAÇÃO", "CATEGORIA - ERRO", "CATEGORIA CHAMADO", "CATEGORIA");
@@ -843,13 +854,24 @@ export default function Index() {
           "Cliente Agendado/Reagendado",
           "Em Configuração",
           "Parado",
+          "FINALIZADO EM",
         ];
-        const todos = [...filtered, ...agendados];
+        // Inclui finalizados (encerrados) que pertencem ao analista filtrado
+        const finalizados = data.filter(a => {
+          if (!a || !a.encerrado) return false;
+          const ma = !fAnalista || a.analista === fAnalista;
+          return ma;
+        });
+        const todos = [...filtered, ...agendados, ...finalizados];
         const grouped: Record<string, Atendimento[]> = {};
         KANBAN_ETAPAS.forEach(e => { grouped[e] = []; });
         const outros: Atendimento[] = [];
         todos.forEach(a => {
-          const match = KANBAN_ETAPAS.find(e => (a.etapa || "").toLowerCase().includes(e.toLowerCase().slice(0, 10)));
+          const etapaLow = (a.etapa || "").toLowerCase();
+          let match = KANBAN_ETAPAS.find(e => etapaLow.includes(e.toLowerCase().slice(0, 10)));
+          if (!match && (a.encerrado || etapaLow.includes("finaliz") || etapaLow.includes("conclu") || etapaLow.includes("arquiv"))) {
+            match = "FINALIZADO EM";
+          }
           if (match) grouped[match].push(a);
           else outros.push(a);
         });
@@ -858,7 +880,7 @@ export default function Index() {
 
         return (
           <div className="mb-8">
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               {cols.map(col => {
                 const isPriority = col === "Analista Selecionado";
                 return (
