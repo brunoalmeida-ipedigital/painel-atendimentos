@@ -854,13 +854,24 @@ export default function Index() {
           "Cliente Agendado/Reagendado",
           "Em Configuração",
           "Parado",
+          "FINALIZADO EM",
         ];
-        const todos = [...filtered, ...agendados];
+        // Inclui finalizados (encerrados) que pertencem ao analista filtrado
+        const finalizados = data.filter(a => {
+          if (!a || !a.encerrado) return false;
+          const ma = !fAnalista || a.analista === fAnalista;
+          return ma;
+        });
+        const todos = [...filtered, ...agendados, ...finalizados];
         const grouped: Record<string, Atendimento[]> = {};
         KANBAN_ETAPAS.forEach(e => { grouped[e] = []; });
         const outros: Atendimento[] = [];
         todos.forEach(a => {
-          const match = KANBAN_ETAPAS.find(e => (a.etapa || "").toLowerCase().includes(e.toLowerCase().slice(0, 10)));
+          const etapaLow = (a.etapa || "").toLowerCase();
+          let match = KANBAN_ETAPAS.find(e => etapaLow.includes(e.toLowerCase().slice(0, 10)));
+          if (!match && (a.encerrado || etapaLow.includes("finaliz") || etapaLow.includes("conclu") || etapaLow.includes("arquiv"))) {
+            match = "FINALIZADO EM";
+          }
           if (match) grouped[match].push(a);
           else outros.push(a);
         });
@@ -869,7 +880,7 @@ export default function Index() {
 
         return (
           <div className="mb-8">
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               {cols.map(col => {
                 const isPriority = col === "Analista Selecionado";
                 return (
