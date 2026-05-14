@@ -90,21 +90,23 @@ export default function NotesPanel() {
   };
 
   return (
-    <div className="bg-card border-2 border-black rounded-xl p-5 mb-6" style={{ boxShadow: "var(--shadow-card)" }}>
-      <div className="text-sm font-bold text-accent mb-3">📝 Painel de Anotações</div>
+    <div className="bg-card border-[3px] border-black rounded-xl p-5 mb-6" style={{ boxShadow: "var(--shadow-card)" }}>
+      <div className="text-base font-extrabold text-accent mb-4 flex items-center gap-2">
+        <span className="text-lg">📝</span> Painel de Anotações
+      </div>
 
       <textarea
         value={notes}
         onChange={e => { setNotes(e.target.value); setDirty(true); }}
         placeholder="Escreva suas anotações aqui..."
-        className="w-full min-h-[120px] text-sm bg-muted border border-border rounded-md px-3 py-2 text-foreground outline-none focus:border-primary resize-y"
+        className="w-full min-h-[140px] text-sm bg-muted border-2 border-border rounded-lg px-4 py-3 text-foreground outline-none focus:border-primary resize-y transition-colors"
       />
 
-      <div className="flex justify-end mt-2">
+      <div className="flex justify-end mt-3">
         <button
           onClick={handleSave}
           disabled={!dirty || !notes.trim()}
-          className={`text-xs px-4 py-2 rounded-md font-semibold transition-all ${
+          className={`text-sm px-5 py-2.5 rounded-lg font-bold transition-all shadow-sm ${
             dirty && notes.trim()
               ? "bg-primary text-primary-foreground hover:opacity-90"
               : "bg-muted text-muted-foreground cursor-not-allowed"
@@ -115,41 +117,41 @@ export default function NotesPanel() {
       </div>
 
       {entries.length > 0 && (
-        <div className="mt-4 space-y-2">
-          <div className="text-[0.65rem] uppercase font-bold text-muted-foreground tracking-wider">
-            Anotações salvas
+        <div className="mt-5 space-y-3">
+          <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider border-b-2 border-border/60 pb-2">
+            📌 Anotações salvas ({entries.length})
           </div>
           {entries.map(entry => (
             <div
               key={entry.id}
-              className="bg-muted/50 border border-border rounded-md p-3 flex flex-col gap-2"
+              className="bg-muted/50 border-2 border-border/80 rounded-lg p-4 flex flex-col gap-2.5 hover:border-border transition-colors"
             >
-              <div className="text-sm text-foreground whitespace-pre-wrap">{entry.text}</div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[0.6rem] uppercase font-bold text-muted-foreground tracking-wider">
-                  Salvo em:
+              <div className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{entry.text}</div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="text-xs uppercase font-bold text-muted-foreground tracking-wider">
+                  Agendado para:
                 </span>
                 <input
                   type="date"
                   value={entry.date}
                   onChange={e => updateEntry(entry.id, { date: e.target.value })}
-                  className="text-[0.7rem] bg-background border border-border rounded px-1.5 py-0.5 text-foreground outline-none focus:border-primary"
+                  className="text-xs bg-background border-2 border-border rounded-lg px-2.5 py-1 text-foreground outline-none focus:border-primary"
                 />
                 <input
                   type="time"
                   value={entry.time}
                   onChange={e => updateEntry(entry.id, { time: e.target.value })}
-                  className="text-[0.7rem] bg-background border border-border rounded px-1.5 py-0.5 text-foreground outline-none focus:border-primary"
+                  className="text-xs bg-background border-2 border-border rounded-lg px-2.5 py-1 text-foreground outline-none focus:border-primary"
                 />
                 {entry.notified5 && (
-                  <span className="text-[0.6rem] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-semibold">
+                  <span className="text-xs px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-500 font-bold border border-emerald-500/30">
                     ✓ Slack avisado
                   </span>
                 )}
                 <div className="flex-1" />
                 <button
                   onClick={() => deleteEntry(entry.id)}
-                  className="text-[0.7rem] px-2 py-1 rounded-md bg-destructive/10 text-destructive font-semibold hover:bg-destructive/20 transition-colors"
+                  className="text-xs px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive font-bold hover:bg-destructive/20 transition-colors border border-destructive/20"
                   title="Excluir"
                 >
                   🗑
