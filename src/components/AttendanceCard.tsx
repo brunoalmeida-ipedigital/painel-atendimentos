@@ -10,6 +10,19 @@ const CCOR: Record<string, string> = {
   NFe: "badge-nfe", "NFe SC": "badge-nfesc", "Boleto Fácil": "badge-bol",
   "Boleto Tradicional": "badge-bolt", TEF: "badge-tef", Impressora: "badge-imp", Etiqueta: "badge-eti",
 };
+const CHEX: Record<string, string> = {
+  "NFC/NFe": "#2563eb", "NFe": "#2563eb", "NFC-SC": "#7c3aed", "NFe SC": "#7c3aed",
+  "SAT": "#16a34a", "MFe": "#0d9488",
+  "Boleto Fácil": "#0891b2", "Boleto Tradicional": "#0369a1",
+  "ECF": "#65a30d", "TEF": "#15803d",
+  "Impressora Térmica": "#ea580c", "Impressora": "#ea580c",
+  "Etiquetas": "#d97706", "Etiqueta": "#d97706",
+  "Whatsapp": "#22c55e", "Equipamento POS": "#a855f7", "POS": "#a855f7",
+  "Conciliadora": "#db2777", "Máquina recorte": "#7c2d12",
+  "Ótica Zap Pro": "#9333ea", "Tablet": "#0ea5e9",
+  "XML": "#475569", "Sistema ssOtica": "#1e40af", "ssOtica": "#1e40af",
+  "Pjbank": "#be123c", "Outros": "#64748b",
+};
 
 const p2 = (n: number) => String(n).padStart(2, "0");
 const fmt = (ms: number) => {
