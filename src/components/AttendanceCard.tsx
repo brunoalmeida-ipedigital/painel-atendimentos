@@ -251,11 +251,11 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
       )}
 
       {/* Tentativas — 1º contato preservado + checkboxes simples 2 a 6 */}
-      <div>
-        <div className="text-[0.6rem] uppercase font-bold text-muted-foreground tracking-wider mb-1">
+      <div className="bg-muted/40 rounded-lg p-2.5 border border-border/60">
+        <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider mb-2">
           Tentativas de contato
         </div>
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex gap-2 flex-wrap">
           {/* 1º contato — lógica original */}
           {(() => {
             const done = tentativas[0];
@@ -274,7 +274,7 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
               <button
                 key={0}
                 title="1º contato"
-                className={`w-9 h-9 rounded-md text-[0.7rem] font-bold border flex items-center justify-center transition-all ${cls}`}
+                className={`w-10 h-10 rounded-lg text-sm font-bold border-2 flex items-center justify-center transition-all shadow-sm ${cls}`}
                 onClick={() => { if (!isHoraContato) onToggleTent(a.id, 0); }}
                 style={{ cursor: isHoraContato ? "not-allowed" : "pointer", opacity: isHoraContato ? 0.85 : 1 }}
               >
@@ -289,7 +289,7 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
             return (
               <label
                 key={i}
-                className={`w-9 h-9 rounded-md text-[0.7rem] font-bold border flex items-center justify-center cursor-pointer transition-all select-none ${
+                className={`w-10 h-10 rounded-lg text-sm font-bold border-2 flex items-center justify-center cursor-pointer transition-all select-none shadow-sm ${
                   done
                     ? "bg-primary border-primary text-primary-foreground"
                     : "bg-muted border-border text-muted-foreground hover:border-primary/50"
@@ -310,41 +310,41 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
       </div>
 
       {/* Anotações */}
-      <div>
-        <div className="text-[0.6rem] uppercase font-bold text-muted-foreground tracking-wider mb-1">
+      <div className="bg-muted/40 rounded-lg p-2.5 border border-border/60">
+        <div className="text-xs uppercase font-bold text-muted-foreground tracking-wider mb-2">
           Anotações
         </div>
         <textarea
           value={notes}
           onChange={(e) => { setNotes(e.target.value); setDirty(true); }}
           placeholder="Escreva informações livres..."
-          className="w-full min-h-[80px] text-xs bg-muted border border-border rounded-md px-2 py-1.5 text-foreground outline-none focus:border-primary resize-y"
+          className="w-full min-h-[90px] text-sm bg-background border-2 border-border rounded-lg px-3 py-2 text-foreground outline-none focus:border-primary resize-y transition-colors"
         />
         {showTimestamp && (
-          <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-            <span className="text-[0.6rem] uppercase font-bold text-muted-foreground tracking-wider">Salvo em:</span>
+          <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+            <span className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Salvo em:</span>
             <input
               type="date"
               value={savedDate}
               onChange={(e) => handleTimestampChange(e.target.value, savedTime)}
-              className="text-[0.7rem] bg-muted border border-border rounded px-1.5 py-0.5 text-foreground outline-none focus:border-primary"
+              className="text-xs bg-background border border-border rounded-lg px-2 py-1 text-foreground outline-none focus:border-primary"
             />
             <input
               type="time"
               value={savedTime}
               onChange={(e) => handleTimestampChange(savedDate, e.target.value)}
-              className="text-[0.7rem] bg-muted border border-border rounded px-1.5 py-0.5 text-foreground outline-none focus:border-primary"
+              className="text-xs bg-background border border-border rounded-lg px-2 py-1 text-foreground outline-none focus:border-primary"
             />
           </div>
         )}
       </div>
 
       {/* Ações */}
-      <div className="flex items-center gap-1.5 pt-1 border-t border-border/50">
+      <div className="flex items-center gap-2 pt-2 border-t-2 border-border/60">
         <button
           onClick={handleSave}
           disabled={!dirty}
-          className={`text-xs px-3 py-1.5 rounded-md font-semibold transition-all ${
+          className={`text-sm px-4 py-2 rounded-lg font-bold transition-all shadow-sm ${
             dirty
               ? "bg-primary text-primary-foreground hover:opacity-90"
               : "bg-muted text-muted-foreground cursor-not-allowed"
@@ -354,23 +354,23 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
         </button>
         <button
           onClick={() => onEdit(a)}
-          className="text-xs px-2 py-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          className="text-sm px-3 py-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-transparent hover:border-border"
           title="Editar"
         >✏️</button>
         <button
           onClick={() => onCopyMsg(a)}
-          className="text-xs px-2 py-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          className="text-sm px-3 py-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-transparent hover:border-border"
           title="Copiar mensagem"
         >📋</button>
         <div className="flex-1" />
         {a.encerrado ? (
           <button
-            className="text-[0.7rem] px-2 py-1 rounded-md bg-blue-500/10 text-blue-400 font-semibold hover:bg-blue-500/20 transition-colors"
+            className="text-sm px-3 py-2 rounded-lg bg-blue-500/15 text-blue-400 font-bold hover:bg-blue-500/25 transition-colors border border-blue-500/30"
             onClick={() => onUpdateCard(a.id, { etapa: "Analista Selecionado", encerrado: false, encerradoEm: null })}
-          >↩</button>
+          >↩ Reabrir</button>
         ) : (
           <button
-            className="text-[0.7rem] px-2 py-1 rounded-md bg-destructive/10 text-destructive font-semibold hover:bg-destructive/20 transition-colors"
+            className="text-sm px-3 py-2 rounded-lg bg-destructive/15 text-destructive font-bold hover:bg-destructive/25 transition-colors border border-destructive/30"
             onClick={() => onUpdateCard(a.id, { etapa: "FINALIZADO EM", encerrado: true, encerradoEm: Date.now() })}
           >✕ Encerrar</button>
         )}
