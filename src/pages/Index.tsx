@@ -883,24 +883,26 @@ export default function Index() {
             <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               {cols.map(col => {
                 const isPriority = col === "Analista Selecionado";
+                const isFinalizado = col === "FINALIZADO EM";
+                const cardCount = grouped[col].length;
                 return (
                   <div
                     key={col}
-                    className={`min-w-0 bg-card-alt/50 border-2 rounded-xl p-2.5 flex flex-col ${
-                      isPriority ? "border-primary/60 ring-1 ring-primary/30" : "border-border"
+                    className={`min-w-0 bg-card-alt/50 border-[3px] rounded-xl p-2.5 flex flex-col ${
+                      isPriority ? "border-primary/70 ring-1 ring-primary/20 bg-primary/5" : isFinalizado ? "border-emerald-500/40 ring-1 ring-emerald-500/10 bg-emerald-500/5" : "border-border"
                     }`}
                   >
-                    <div className="flex items-center justify-between px-1 pb-2 mb-1.5 border-b border-border">
-                      <h3 className={`text-xs font-bold uppercase tracking-wide truncate ${isPriority ? "text-primary" : "text-foreground"}`}>
+                    <div className={`flex items-center justify-between px-1.5 pb-2.5 mb-2 border-b-2 ${isPriority ? "border-primary/30" : isFinalizado ? "border-emerald-500/30" : "border-border/60"}`}>
+                      <h3 className={`text-sm font-extrabold uppercase tracking-wide truncate ${isPriority ? "text-primary" : isFinalizado ? "text-emerald-500" : "text-foreground"}`}>
                         {isPriority && "⭐ "}{col}
                       </h3>
-                      <span className="text-[0.65rem] font-bold bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
-                        {grouped[col].length}
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isPriority ? "bg-primary text-primary-foreground" : isFinalizado ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"}`}>
+                        {cardCount}
                       </span>
                     </div>
-                    <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
+                    <div className="space-y-2.5 max-h-[70vh] overflow-y-auto pr-1">
                       {grouped[col].length === 0 ? (
-                        <div className="text-center py-6 text-[0.7rem] text-muted-foreground">Vazio</div>
+                        <div className="text-center py-8 text-sm text-muted-foreground font-medium">Vazio</div>
                       ) : (
                         grouped[col].map((a, i) => (
                           <AttendanceCard
