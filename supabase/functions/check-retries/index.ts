@@ -57,18 +57,8 @@ Deno.serve(async (req) => {
           ultima_notificacao_retry: new Date().toISOString(),
         }).eq('id', card.id);
 
-        // Send Slack notification
-        if (SLACK_WEBHOOK_URL && (card.analista || '').toUpperCase() === 'BRUNO') {
-          const text = `📞 *TENTATIVA DE CONTATO ${newAttempt}/${MAX_ATTEMPTS}*\n👤 Analista: ${card.analista}\n🏢 Cliente: ${card.cli}\n🔑 Licença: ${card.lic}\n💡 Tentar fazer a ${newAttempt}ª tentativa de contato`;
-          
-          await fetch(SLACK_WEBHOOK_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text }),
-          });
-        }
-
-        results.push(`Card ${card.lic}: ${newAttempt}ª tentativa registrada`);
+        // Slack notifications for retry attempts disabled per user request
+        results.push(`Card ${card.lic}: ${newAttempt}ª tentativa registrada (sem notificação Slack)`);
       }
     }
 
