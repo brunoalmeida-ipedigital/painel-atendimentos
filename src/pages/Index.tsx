@@ -729,6 +729,11 @@ export default function Index() {
   const memData = useMemo(() => fAnalista ? data.filter(a => a?.analista === fAnalista) : data, [data, fAnalista]);
   const abrt = memData.filter(a => a && !a.encerrado).length;
   const alta = memData.filter(a => a && !a.encerrado && a.dem === "Alta").length;
+  const finalizadosCount = memData.filter(a => {
+    if (!a) return false;
+    const et = (a.etapa || "").toLowerCase();
+    return a.encerrado || et.includes("finaliz") || et.includes("conclu") || et.includes("arquiv");
+  }).length;
   const aVencer = memData.filter(a => a && !a.encerrado && (a.etapa || "").toLowerCase().includes("analista selecionado")).sort((a, b) => (a.abertoEm || 0) - (b.abertoEm || 0)).slice(0, 5);
 
   return (
@@ -762,30 +767,35 @@ export default function Index() {
         </div>
       </header>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <div className="bg-primary rounded-xl p-4 text-primary-foreground">
-          <div className="text-[0.65rem] uppercase font-bold opacity-80">Aguardando</div>
-          <div className="text-2xl font-extrabold">{abrt}</div>
-          <div className="text-[0.7rem] opacity-70">Chamados abertos</div>
+      {/* KPIs — Polysure-inspired colorful pills */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
+        <div className="rounded-2xl p-4 text-zinc-900 shadow-lg" style={{ background: "linear-gradient(135deg,#fbbf24,#f59e0b)" }}>
+          <div className="text-[0.7rem] uppercase font-extrabold opacity-80">Aguardando</div>
+          <div className="text-3xl font-black mt-1">{abrt}</div>
+          <div className="text-[0.7rem] opacity-80 font-semibold">Chamados abertos</div>
         </div>
-        <div className="bg-card rounded-xl p-4 border border-border">
-          <div className="text-[0.65rem] uppercase font-bold text-muted-foreground">Alta Demanda</div>
-          <div className="text-2xl font-extrabold text-destructive">{alta}</div>
-          <div className="text-[0.7rem] text-muted-foreground">Prioridade máxima</div>
+        <div className="rounded-2xl p-4 text-zinc-900 shadow-lg" style={{ background: "linear-gradient(135deg,#d8b4fe,#a78bfa)" }}>
+          <div className="text-[0.7rem] uppercase font-extrabold opacity-80">Alta Demanda</div>
+          <div className="text-3xl font-black mt-1">{alta}</div>
+          <div className="text-[0.7rem] opacity-80 font-semibold">Prioridade máxima</div>
         </div>
-        <div className="bg-card rounded-xl p-4 border border-border">
-          <div className="text-[0.65rem] uppercase font-bold text-muted-foreground">Agendados</div>
-          <div className="text-2xl font-extrabold text-vintage-yellow">{agendados.length}</div>
-          <div className="text-[0.7rem] text-muted-foreground">Clientes agendados</div>
+        <div className="rounded-2xl p-4 text-zinc-900 shadow-lg" style={{ background: "linear-gradient(135deg,#bef264,#84cc16)" }}>
+          <div className="text-[0.7rem] uppercase font-extrabold opacity-80">Agendados</div>
+          <div className="text-3xl font-black mt-1">{agendados.length}</div>
+          <div className="text-[0.7rem] opacity-80 font-semibold">Clientes agendados</div>
         </div>
-        <div className="bg-card rounded-xl p-4 border border-border">
-          <div className="text-[0.65rem] uppercase font-bold text-accent mb-1">Próximos a Vencer ⌛</div>
+        <div className="rounded-2xl p-4 shadow-lg text-white" style={{ background: "linear-gradient(135deg,#10b981,#047857)" }}>
+          <div className="text-[0.7rem] uppercase font-extrabold opacity-90">Finalizados</div>
+          <div className="text-3xl font-black mt-1">{finalizadosCount}</div>
+          <div className="text-[0.7rem] opacity-90 font-semibold">Etapa "Finalizado em"</div>
+        </div>
+        <div className="rounded-2xl p-4 bg-card border-2 border-primary/40 shadow-lg">
+          <div className="text-[0.7rem] uppercase font-extrabold text-primary mb-1">Próximos a Vencer ⌛</div>
           {aVencer.slice(0, 3).map(t => {
             const rest = LIM - (now.getTime() - (t.abertoEm || 0));
             return (
               <div key={t.id} className="flex justify-between text-xs py-0.5">
-                <span className="truncate max-w-[100px] font-medium">{t.lic} | {t.cli.slice(0, 8)}</span>
+                <span className="truncate max-w-[100px] font-medium text-foreground">{t.lic} | {t.cli.slice(0, 8)}</span>
                 <span className={`font-mono font-bold ${rest < 0 ? "text-destructive" : "text-accent"}`}>{fmtM(rest)}</span>
               </div>
             );
