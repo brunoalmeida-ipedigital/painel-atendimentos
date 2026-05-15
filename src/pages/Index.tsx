@@ -729,6 +729,11 @@ export default function Index() {
   const memData = useMemo(() => fAnalista ? data.filter(a => a?.analista === fAnalista) : data, [data, fAnalista]);
   const abrt = memData.filter(a => a && !a.encerrado).length;
   const alta = memData.filter(a => a && !a.encerrado && a.dem === "Alta").length;
+  const finalizadosCount = memData.filter(a => {
+    if (!a) return false;
+    const et = (a.etapa || "").toLowerCase();
+    return a.encerrado || et.includes("finaliz") || et.includes("conclu") || et.includes("arquiv");
+  }).length;
   const aVencer = memData.filter(a => a && !a.encerrado && (a.etapa || "").toLowerCase().includes("analista selecionado")).sort((a, b) => (a.abertoEm || 0) - (b.abertoEm || 0)).slice(0, 5);
 
   return (
