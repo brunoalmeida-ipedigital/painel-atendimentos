@@ -179,22 +179,22 @@
   to { opacity: 0; max-height: 0; }
 }
 
-/* Badge variants */
-.badge-nfe { background: hsl(210 60% 95%); color: hsl(210 60% 40%); border: 1px solid hsl(210 50% 80%); }
-.badge-nfesc { background: hsl(270 50% 95%); color: hsl(270 50% 40%); border: 1px solid hsl(270 40% 80%); }
-.badge-bol { background: hsl(185 50% 93%); color: hsl(185 50% 35%); border: 1px solid hsl(185 40% 78%); }
-.badge-bolt { background: hsl(200 50% 93%); color: hsl(200 50% 35%); border: 1px solid hsl(200 40% 78%); }
-.badge-tef { background: hsl(140 40% 93%); color: hsl(140 40% 30%); border: 1px solid hsl(140 30% 75%); }
-.badge-imp { background: hsl(25 60% 93%); color: hsl(25 60% 38%); border: 1px solid hsl(25 50% 78%); }
-.badge-eti { background: hsl(40 60% 93%); color: hsl(40 60% 35%); border: 1px solid hsl(40 50% 78%); }
+/* Badge variants (black theme default) */
+.badge-nfe { background: hsl(210 50% 18%); color: hsl(210 80% 72%); border: 1px solid hsl(210 40% 28%); }
+.badge-nfesc { background: hsl(270 40% 18%); color: hsl(270 70% 72%); border: 1px solid hsl(270 35% 28%); }
+.badge-bol { background: hsl(185 40% 16%); color: hsl(185 70% 68%); border: 1px solid hsl(185 35% 26%); }
+.badge-bolt { background: hsl(200 40% 16%); color: hsl(200 70% 68%); border: 1px solid hsl(200 35% 26%); }
+.badge-tef { background: hsl(140 35% 16%); color: hsl(140 60% 65%); border: 1px solid hsl(140 30% 24%); }
+.badge-imp { background: hsl(25 40% 18%); color: hsl(25 70% 66%); border: 1px solid hsl(25 35% 28%); }
+.badge-eti { background: hsl(40 40% 18%); color: hsl(40 70% 66%); border: 1px solid hsl(40 35% 28%); }
 
-.dark .badge-nfe { background: hsl(210 40% 20%); color: hsl(210 60% 70%); border-color: hsl(210 30% 30%); }
-.dark .badge-nfesc { background: hsl(270 30% 20%); color: hsl(270 50% 70%); border-color: hsl(270 25% 30%); }
-.dark .badge-bol { background: hsl(185 30% 18%); color: hsl(185 50% 65%); border-color: hsl(185 25% 28%); }
-.dark .badge-bolt { background: hsl(200 30% 18%); color: hsl(200 50% 65%); border-color: hsl(200 25% 28%); }
-.dark .badge-tef { background: hsl(140 25% 18%); color: hsl(140 40% 60%); border-color: hsl(140 20% 28%); }
-.dark .badge-imp { background: hsl(25 35% 20%); color: hsl(25 60% 65%); border-color: hsl(25 30% 30%); }
-.dark .badge-eti { background: hsl(40 35% 20%); color: hsl(40 60% 65%); border-color: hsl(40 30% 30%); }
+.light .badge-nfe { background: hsl(210 60% 95%); color: hsl(210 60% 40%); border: 1px solid hsl(210 50% 80%); }
+.light .badge-nfesc { background: hsl(270 50% 95%); color: hsl(270 50% 40%); border: 1px solid hsl(270 40% 80%); }
+.light .badge-bol { background: hsl(185 50% 93%); color: hsl(185 50% 35%); border: 1px solid hsl(185 40% 78%); }
+.light .badge-bolt { background: hsl(200 50% 93%); color: hsl(200 50% 35%); border: 1px solid hsl(200 40% 78%); }
+.light .badge-tef { background: hsl(140 40% 93%); color: hsl(140 40% 30%); border: 1px solid hsl(140 30% 75%); }
+.light .badge-imp { background: hsl(25 60% 93%); color: hsl(25 60% 38%); border: 1px solid hsl(25 50% 78%); }
+.light .badge-eti { background: hsl(40 60% 93%); color: hsl(40 60% 35%); border: 1px solid hsl(40 50% 78%); }
 
 /* Toast */
 #toast-custom {
