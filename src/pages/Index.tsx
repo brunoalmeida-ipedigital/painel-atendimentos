@@ -767,30 +767,30 @@ export default function Index() {
         </div>
       </header>
 
-      {/* KPIs — Polysure-inspired colorful pills */}
+      {/* KPIs — Black theme cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
-        <div className="rounded-2xl p-4 text-zinc-900 shadow-lg" style={{ background: "linear-gradient(135deg,#fbbf24,#f59e0b)" }}>
-          <div className="text-[0.7rem] uppercase font-extrabold opacity-80">Aguardando</div>
-          <div className="text-3xl font-black mt-1">{abrt}</div>
-          <div className="text-[0.7rem] opacity-80 font-semibold">Chamados abertos</div>
+        <div className="rounded-2xl p-4 bg-card border-2 border-yellow-500/40 shadow-lg">
+          <div className="text-[0.7rem] uppercase font-extrabold text-yellow-500/80">Aguardando</div>
+          <div className="text-3xl font-black mt-1 text-foreground">{abrt}</div>
+          <div className="text-[0.7rem] text-muted-foreground font-semibold">Chamados abertos</div>
         </div>
-        <div className="rounded-2xl p-4 text-zinc-900 shadow-lg" style={{ background: "linear-gradient(135deg,#d8b4fe,#a78bfa)" }}>
-          <div className="text-[0.7rem] uppercase font-extrabold opacity-80">Alta Demanda</div>
-          <div className="text-3xl font-black mt-1">{alta}</div>
-          <div className="text-[0.7rem] opacity-80 font-semibold">Prioridade máxima</div>
+        <div className="rounded-2xl p-4 bg-card border-2 border-purple-500/40 shadow-lg">
+          <div className="text-[0.7rem] uppercase font-extrabold text-purple-400/80">Alta Demanda</div>
+          <div className="text-3xl font-black mt-1 text-foreground">{alta}</div>
+          <div className="text-[0.7rem] text-muted-foreground font-semibold">Prioridade máxima</div>
         </div>
-        <div className="rounded-2xl p-4 text-zinc-900 shadow-lg" style={{ background: "linear-gradient(135deg,#bef264,#84cc16)" }}>
-          <div className="text-[0.7rem] uppercase font-extrabold opacity-80">Agendados</div>
-          <div className="text-3xl font-black mt-1">{agendados.length}</div>
-          <div className="text-[0.7rem] opacity-80 font-semibold">Clientes agendados</div>
+        <div className="rounded-2xl p-4 bg-card border-2 border-green-500/40 shadow-lg">
+          <div className="text-[0.7rem] uppercase font-extrabold text-green-400/80">Agendados</div>
+          <div className="text-3xl font-black mt-1 text-foreground">{agendados.length}</div>
+          <div className="text-[0.7rem] text-muted-foreground font-semibold">Clientes agendados</div>
         </div>
-        <div className="rounded-2xl p-4 shadow-lg text-white" style={{ background: "linear-gradient(135deg,#10b981,#047857)" }}>
-          <div className="text-[0.7rem] uppercase font-extrabold opacity-90">Finalizados</div>
-          <div className="text-3xl font-black mt-1">{finalizadosCount}</div>
-          <div className="text-[0.7rem] opacity-90 font-semibold">Etapa "Finalizado em"</div>
+        <div className="rounded-2xl p-4 bg-card border-2 border-emerald-500/40 shadow-lg">
+          <div className="text-[0.7rem] uppercase font-extrabold text-emerald-400/80">Finalizados</div>
+          <div className="text-3xl font-black mt-1 text-foreground">{finalizadosCount}</div>
+          <div className="text-[0.7rem] text-muted-foreground font-semibold">Etapa "Finalizado em"</div>
         </div>
         <div className="rounded-2xl p-4 bg-card border-2 border-primary/40 shadow-lg">
-          <div className="text-[0.7rem] uppercase font-extrabold text-primary mb-1">Próximos a Vencer ⌛</div>
+          <div className="text-[0.7rem] uppercase font-extrabold text-primary/80 mb-1">Próximos a Vencer ⌛</div>
           {aVencer.slice(0, 3).map(t => {
             const rest = LIM - (now.getTime() - (t.abertoEm || 0));
             return (
