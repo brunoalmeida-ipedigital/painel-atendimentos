@@ -170,7 +170,7 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
               type="button"
               onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(a.lic || ""); }}
               title="Clique para copiar a licença"
-              className="font-mono text-sm font-bold text-primary bg-primary/10 px-2 py-1 rounded-md hover:bg-primary/25 hover:text-primary transition-colors cursor-pointer border border-primary/20"
+              className="font-mono text-sm font-bold text-[#c8c8c8] bg-[#111111] px-2 py-1 rounded-md hover:bg-[#1a1a1a] hover:text-[#e0e0e0] transition-colors cursor-pointer border border-[#1f1f1f]"
             >
               {a.lic}
             </button>
