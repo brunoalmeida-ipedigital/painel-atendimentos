@@ -90,7 +90,7 @@ export default function NotesPanel() {
   };
 
   return (
-    <div className="bg-card border-[3px] border-black rounded-xl p-5 mb-6" style={{ boxShadow: "var(--shadow-card)" }}>
+    <div className="bg-card border-2 border-border rounded-xl p-5 mb-6" style={{ boxShadow: "var(--shadow-card)" }}>
       <div className="text-base font-extrabold text-accent mb-4 flex items-center gap-2">
         <span className="text-lg">📝</span> Painel de Anotações
       </div>

@@ -156,9 +156,9 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
 
   return (
     <div
-      className={`rounded-xl border-[3px] border-black bg-card p-3.5 flex flex-col gap-2.5 transition-all hover:border-primary/80 hover:shadow-lg ${
+      className={`rounded-xl border-[2px] border-border bg-card p-3.5 flex flex-col gap-2.5 transition-all hover:border-primary/60 hover:shadow-lg ${
         a.encerrado ? "opacity-60" : ""
-      } ${a.dem === "Alta" && !a.encerrado ? "ring-2 ring-destructive/50 shadow-destructive/20 shadow-md" : ""}`}
+      } ${a.dem === "Alta" && !a.encerrado ? "ring-2 ring-destructive/40 shadow-destructive/15 shadow-md" : ""}`}
       style={{ boxShadow: "var(--shadow-card)" }}
     >
       {/* Header */}
