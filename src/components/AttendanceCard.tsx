@@ -175,12 +175,7 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
               {a.lic}
             </button>
             <span
-              className="text-xs font-bold px-2.5 py-1 rounded-md border"
-              style={{
-                background: `${CHEX[a.clas] || "#2563eb"}18`,
-                color: CHEX[a.clas] || "#2563eb",
-                borderColor: `${CHEX[a.clas] || "#2563eb"}40`,
-              }}
+              className="text-xs font-bold px-2.5 py-1 rounded-md bg-[#111111] text-[#c8c8c8] border border-[#1f1f1f]"
             >
               {a.clas}
             </span>
