@@ -104,7 +104,7 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
 
   // 1º contato (índice 0) — comportamento preservado
   const isHoraContato = (a.etapa || "").toLowerCase().includes("hora primeiro contato");
-  const ela = nowTs - (a.abertoEm || 0);
+  const ela = businessElapsed(a.abertoEm || 0, nowTs);
 
   // Parse existing notes/timestamp from comentario (format: "notes\n\n[salvo em: YYYY-MM-DD HH:mm]")
   const parseStored = (raw: string) => {
