@@ -874,42 +874,43 @@ export default function Index() {
         </div>
       </header>
 
-      {/* KPIs — Black theme cards */}
+      {/* KPIs — fontes maiores e coloridas */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
-        <div className="rounded-2xl p-4 bg-card border-2 border-yellow-500/40 shadow-lg">
-          <div className="text-[0.7rem] uppercase font-extrabold text-yellow-500/80">Aguardando</div>
-          <div className="text-3xl font-black mt-1 text-foreground">{abrt}</div>
-          <div className="text-[0.7rem] text-muted-foreground font-semibold">Chamados abertos</div>
+        <div className="rounded-2xl p-5 bg-card border-2 border-yellow-500/50 shadow-lg">
+          <div className="text-sm uppercase font-extrabold text-yellow-400 tracking-wide">Aguardando</div>
+          <div className="text-5xl font-black mt-1 text-yellow-300 drop-shadow">{abrt}</div>
+          <div className="text-sm text-muted-foreground font-semibold mt-1">Chamados abertos</div>
         </div>
-        <div className="rounded-2xl p-4 bg-card border-2 border-purple-500/40 shadow-lg">
-          <div className="text-[0.7rem] uppercase font-extrabold text-purple-400/80">Alta Demanda</div>
-          <div className="text-3xl font-black mt-1 text-foreground">{alta}</div>
-          <div className="text-[0.7rem] text-muted-foreground font-semibold">Prioridade máxima</div>
+        <div className="rounded-2xl p-5 bg-card border-2 border-purple-500/50 shadow-lg">
+          <div className="text-sm uppercase font-extrabold text-purple-300 tracking-wide">Alta Demanda</div>
+          <div className="text-5xl font-black mt-1 text-purple-300 drop-shadow">{alta}</div>
+          <div className="text-sm text-muted-foreground font-semibold mt-1">Prioridade máxima</div>
         </div>
-        <div className="rounded-2xl p-4 bg-card border-2 border-green-500/40 shadow-lg">
-          <div className="text-[0.7rem] uppercase font-extrabold text-green-400/80">Agendados</div>
-          <div className="text-3xl font-black mt-1 text-foreground">{agendados.length}</div>
-          <div className="text-[0.7rem] text-muted-foreground font-semibold">Clientes agendados</div>
+        <div className="rounded-2xl p-5 bg-card border-2 border-sky-500/50 shadow-lg">
+          <div className="text-sm uppercase font-extrabold text-sky-300 tracking-wide">Agendados</div>
+          <div className="text-5xl font-black mt-1 text-sky-300 drop-shadow">{agendados.length}</div>
+          <div className="text-sm text-muted-foreground font-semibold mt-1">Clientes agendados</div>
         </div>
-        <div className="rounded-2xl p-4 bg-card border-2 border-emerald-500/40 shadow-lg">
-          <div className="text-[0.7rem] uppercase font-extrabold text-emerald-400/80">Finalizados</div>
-          <div className="text-3xl font-black mt-1 text-foreground">{finalizadosCount}</div>
-          <div className="text-[0.7rem] text-muted-foreground font-semibold">Etapa "Finalizado em"</div>
+        <div className="rounded-2xl p-5 bg-card border-2 border-emerald-500/50 shadow-lg">
+          <div className="text-sm uppercase font-extrabold text-emerald-300 tracking-wide">Finalizados</div>
+          <div className="text-5xl font-black mt-1 text-emerald-300 drop-shadow">{finalizadosCount}</div>
+          <div className="text-sm text-muted-foreground font-semibold mt-1">Etapa "Finalizado em"</div>
         </div>
-        <div className="rounded-2xl p-4 bg-card border-2 border-primary/40 shadow-lg">
-          <div className="text-[0.7rem] uppercase font-extrabold text-primary/80 mb-1">Próximos a Vencer ⌛</div>
+        <div className="rounded-2xl p-5 bg-card border-2 border-rose-500/50 shadow-lg">
+          <div className="text-sm uppercase font-extrabold text-rose-300 tracking-wide mb-1">Próximos a Vencer ⌛</div>
           {aVencer.slice(0, 3).map(t => {
             const rest = LIM - (now.getTime() - (t.abertoEm || 0));
             return (
-              <div key={t.id} className="flex justify-between text-xs py-0.5">
-                <span className="truncate max-w-[100px] font-medium text-foreground">{t.lic} | {t.cli.slice(0, 8)}</span>
-                <span className={`font-mono font-bold ${rest < 0 ? "text-destructive" : "text-accent"}`}>{fmtM(rest)}</span>
+              <div key={t.id} className="flex justify-between text-sm py-0.5">
+                <span className="truncate max-w-[110px] font-bold text-foreground">{t.lic} | {t.cli.slice(0, 8)}</span>
+                <span className={`font-mono font-black ${rest < 0 ? "text-destructive" : "text-rose-300"}`}>{fmtM(rest)}</span>
               </div>
             );
           })}
-          {aVencer.length === 0 && <div className="text-xs text-muted-foreground mt-1">Nenhum no prazo.</div>}
+          {aVencer.length === 0 && <div className="text-sm text-muted-foreground mt-1">Nenhum no prazo.</div>}
         </div>
       </div>
+
 
       {/* Tabs */}
       <div className="flex gap-1 mb-4 bg-muted rounded-lg p-1 w-fit flex-wrap">
