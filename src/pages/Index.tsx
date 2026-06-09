@@ -739,7 +739,7 @@ export default function Index() {
   const aVencer = memData.filter(a => a && !a.encerrado && (a.etapa || "").toLowerCase().includes("analista selecionado")).sort((a, b) => (a.abertoEm || 0) - (b.abertoEm || 0)).slice(0, 5);
 
   // ── Exportar lista (TXT / PDF) ──
-  const exportList = (open: Atendimento[], agnd: Atendimento[], format: "txt" | "pdf") => {
+  const exportList = (open: Atendimento[], agnd: Atendimento[], format: "txt" | "pdf" | "csv") => {
     const todos = [...open, ...agnd];
     const today = new Date();
     const dateStr = today.toLocaleDateString("pt-BR");
