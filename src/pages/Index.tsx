@@ -737,6 +737,112 @@ export default function Index() {
   }).length;
   const aVencer = memData.filter(a => a && !a.encerrado && (a.etapa || "").toLowerCase().includes("analista selecionado")).sort((a, b) => (a.abertoEm || 0) - (b.abertoEm || 0)).slice(0, 5);
 
+  // ── Exportar lista (TXT / PDF) ──
+  const exportList = (open: Atendimento[], agnd: Atendimento[], format: "txt" | "pdf") => {
+    const todos = [...open, ...agnd];
+    const today = new Date();
+    const dateStr = today.toLocaleDateString("pt-BR");
+    const timeStr = today.toLocaleTimeString("pt-BR");
+    const fileBase = `atendimentos_${today.toISOString().slice(0, 10)}`;
+
+    // agrupar prioridade -> classificacao
+    const grupos: Record<string, Record<string, Atendimento[]>> = { Alta: {}, "Média": {} };
+    todos.forEach(a => {
+      const pr = (a.dem || "Média") === "Alta" ? "Alta" : "Média";
+      const cl = a.clas || "Outros";
+      (grupos[pr][cl] ||= []).push(a);
+    });
+
+    if (format === "txt") {
+      let txt = `CENTRAL DE ATENDIMENTOS — ${dateStr} ${timeStr}\n`;
+      txt += `Analista: ${fAnalista || "Todos"}\nTotal: ${todos.length}\n`;
+      txt += "=".repeat(60) + "\n\n";
+      (["Alta", "Média"] as const).forEach(pr => {
+        const classes = Object.keys(grupos[pr]);
+        if (!classes.length) return;
+        txt += `### ${pr.toUpperCase()} PRIORIDADE ###\n\n`;
+        classes.sort().forEach(cl => {
+          txt += `-- ${cl} (${grupos[pr][cl].length}) --\n`;
+          grupos[pr][cl].forEach(a => {
+            txt += `  • [${a.lic}] ${a.cli}\n`;
+            if (a.cel) txt += `    Tel: ${a.cel}\n`;
+            txt += `    Etapa: ${a.etapa}\n`;
+            if (a.comentario) txt += `    Obs: ${a.comentario.replace(/\n/g, " ")}\n`;
+            txt += `\n`;
+          });
+        });
+        txt += "\n";
+      });
+      const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url; link.download = `${fileBase}.txt`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast("📝 TXT exportado!");
+      return;
+    }
+
+    // PDF
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    let y = 40;
+    const ensure = (h: number) => { if (y + h > pageH - 40) { doc.addPage(); y = 40; } };
+
+    doc.setFont("helvetica", "bold"); doc.setFontSize(16);
+    doc.text("Central de Atendimentos", 40, y); y += 20;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+    doc.text(`${dateStr} ${timeStr}  •  Analista: ${fAnalista || "Todos"}  •  Total: ${todos.length}`, 40, y); y += 18;
+    doc.setDrawColor(180); doc.line(40, y, pageW - 40, y); y += 14;
+
+    (["Alta", "Média"] as const).forEach(pr => {
+      const classes = Object.keys(grupos[pr]);
+      if (!classes.length) return;
+      ensure(28);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(13);
+      doc.setTextColor(pr === "Alta" ? "#c0392b" : "#b7950b");
+      doc.text(`${pr === "Alta" ? "● ALTA" : "● MÉDIA"} PRIORIDADE`, 40, y); y += 16;
+      doc.setTextColor(20);
+
+      classes.sort().forEach(cl => {
+        ensure(20);
+        doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+        const hex = CHEX[cl] || "#555555";
+        doc.setTextColor(hex);
+        doc.text(`${cl}  (${grupos[pr][cl].length})`, 50, y); y += 14;
+        doc.setTextColor(20);
+        doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+
+        grupos[pr][cl].forEach(a => {
+          const line1 = `• [${a.lic}] ${a.cli}${a.cel ? "  —  " + a.cel : ""}`;
+          const wrapped = doc.splitTextToSize(line1, pageW - 100);
+          ensure(wrapped.length * 12 + 6);
+          doc.text(wrapped, 60, y); y += wrapped.length * 12;
+          if (a.etapa) {
+            doc.setTextColor(110);
+            doc.text(`Etapa: ${a.etapa}`, 72, y); y += 11;
+            doc.setTextColor(20);
+          }
+          if (a.comentario) {
+            doc.setTextColor(110);
+            const obs = doc.splitTextToSize(`Obs: ${a.comentario.replace(/\n/g, " ")}`, pageW - 120);
+            ensure(obs.length * 11 + 4);
+            doc.text(obs, 72, y); y += obs.length * 11;
+            doc.setTextColor(20);
+          }
+          y += 4;
+        });
+        y += 4;
+      });
+      y += 6;
+    });
+
+    doc.save(`${fileBase}.pdf`);
+    toast("📄 PDF exportado!");
+  };
+
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-6 max-w-[1800px] mx-auto">
       {/* Topbar */}
