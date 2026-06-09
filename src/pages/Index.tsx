@@ -6,6 +6,7 @@ import AgendamentosPanel from "@/components/AgendamentosPanel";
 import EmailsPanel from "@/components/EmailsPanel";
 import NotesPanel from "@/components/NotesPanel";
 import jsPDF from "jspdf";
+import { businessElapsed } from "@/lib/businessTime";
 
 // ── Config ────────────────────────────────────────────────────────
 const PIPE_ID = "823783";
@@ -415,7 +416,7 @@ export default function Index() {
       const n = [...prev];
       const nowTs = now.getTime();
       n.filter(a => a && !a.encerrado).forEach(a => {
-        const el = nowTs - (a.abertoEm || 0);
+        const el = businessElapsed(a.abertoEm || 0, nowTs);
         const rest = LIM - el;
         const isMe = !fAnalista || a.analista === fAnalista;
         const isAnSel = (a.etapa || "").toLowerCase().includes("analista selecionado");
@@ -738,7 +739,7 @@ export default function Index() {
   const aVencer = memData.filter(a => a && !a.encerrado && (a.etapa || "").toLowerCase().includes("analista selecionado")).sort((a, b) => (a.abertoEm || 0) - (b.abertoEm || 0)).slice(0, 5);
 
   // ── Exportar lista (TXT / PDF) ──
-  const exportList = (open: Atendimento[], agnd: Atendimento[], format: "txt" | "pdf") => {
+  const exportList = (open: Atendimento[], agnd: Atendimento[], format: "txt" | "pdf" | "csv") => {
     const todos = [...open, ...agnd];
     const today = new Date();
     const dateStr = today.toLocaleDateString("pt-BR");
@@ -782,6 +783,32 @@ export default function Index() {
       toast("📝 TXT exportado!");
       return;
     }
+
+    if (format === "csv") {
+      const esc = (v: string) => `"${(v || "").replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
+      const headers = ["Prioridade", "Classificação", "Licença", "Cliente", "Telefone", "Etapa", "Aberto em", "Observação"];
+      const lines: string[] = [headers.join(";")];
+      (["Alta", "Média"] as const).forEach(pr => {
+        const classes = Object.keys(grupos[pr]).sort();
+        classes.forEach(cl => {
+          grupos[pr][cl].forEach(a => {
+            const aberto = a.abertoEm ? new Date(a.abertoEm).toLocaleString("pt-BR") : "";
+            lines.push([pr, cl, a.lic, a.cli, a.cel, a.etapa, aberto, a.comentario || ""].map(esc).join(";"));
+          });
+        });
+      });
+      // BOM para acentuação correta no LibreOffice/Excel
+      const csv = "\uFEFF" + lines.join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url; link.download = `${fileBase}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast("📊 CSV exportado (abre no LibreOffice Calc)!");
+      return;
+    }
+
 
     // PDF
     const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -899,7 +926,7 @@ export default function Index() {
         <div className="rounded-2xl p-5 bg-card border-2 border-rose-500/50 shadow-lg">
           <div className="text-sm uppercase font-extrabold text-rose-300 tracking-wide mb-1">Próximos a Vencer ⌛</div>
           {aVencer.slice(0, 3).map(t => {
-            const rest = LIM - (now.getTime() - (t.abertoEm || 0));
+            const rest = LIM - businessElapsed(t.abertoEm || 0, now.getTime());
             return (
               <div key={t.id} className="flex justify-between text-sm py-0.5">
                 <span className="truncate max-w-[110px] font-bold text-foreground">{t.lic} | {t.cli.slice(0, 8)}</span>
@@ -969,6 +996,11 @@ export default function Index() {
           className="text-sm text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2 font-semibold hover:bg-rose-500/20 transition-colors"
           title="Exportar para PDF"
         >📄 PDF</button>
+        <button
+          onClick={() => exportList(filtered, agendados, "csv")}
+          className="text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-2 font-semibold hover:bg-emerald-500/20 transition-colors"
+          title="Exportar CSV (abre no LibreOffice Calc)"
+        >📊 LibreOffice</button>
         <div className="ml-auto text-sm text-muted-foreground font-medium">
           📋 <span className="text-foreground font-bold">{filtered.length}</span> registro(s) {lastSync && `• Sync: ${lastSync.toLocaleTimeString("pt-BR")}`}
         </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { businessElapsed } from "@/lib/businessTime";
 
 // ── Config ──
 const ETAPAS = [
@@ -85,7 +86,7 @@ const parseDate = (val: string | null | undefined) => {
 export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onCopyMsg, onToggleTent, fAnalista }: Props) {
   const nowTs = now.getTime();
   const ab = a.abertoEm || nowTs;
-  const el = a.encerrado ? (a.encerradoEm || nowTs) - ab : nowTs - ab;
+  const el = a.encerrado ? businessElapsed(ab, a.encerradoEm || nowTs) : businessElapsed(ab, nowTs);
   const rest = LIM - el;
 
   const isVencido = rest < 0;
@@ -103,7 +104,7 @@ export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onC
 
   // 1º contato (índice 0) — comportamento preservado
   const isHoraContato = (a.etapa || "").toLowerCase().includes("hora primeiro contato");
-  const ela = nowTs - (a.abertoEm || 0);
+  const ela = businessElapsed(a.abertoEm || 0, nowTs);
 
   // Parse existing notes/timestamp from comentario (format: "notes\n\n[salvo em: YYYY-MM-DD HH:mm]")
   const parseStored = (raw: string) => {
