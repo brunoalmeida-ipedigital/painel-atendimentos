@@ -784,6 +784,32 @@ export default function Index() {
       return;
     }
 
+    if (format === "csv") {
+      const esc = (v: string) => `"${(v || "").replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
+      const headers = ["Prioridade", "Classificação", "Licença", "Cliente", "Telefone", "Etapa", "Aberto em", "Observação"];
+      const lines: string[] = [headers.join(";")];
+      (["Alta", "Média"] as const).forEach(pr => {
+        const classes = Object.keys(grupos[pr]).sort();
+        classes.forEach(cl => {
+          grupos[pr][cl].forEach(a => {
+            const aberto = a.abertoEm ? new Date(a.abertoEm).toLocaleString("pt-BR") : "";
+            lines.push([pr, cl, a.lic, a.cli, a.cel, a.etapa, aberto, a.comentario || ""].map(esc).join(";"));
+          });
+        });
+      });
+      // BOM para acentuação correta no LibreOffice/Excel
+      const csv = "\uFEFF" + lines.join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url; link.download = `${fileBase}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast("📊 CSV exportado (abre no LibreOffice Calc)!");
+      return;
+    }
+
+
     // PDF
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const pageW = doc.internal.pageSize.getWidth();
