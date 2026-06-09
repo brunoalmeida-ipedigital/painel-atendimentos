@@ -416,7 +416,7 @@ export default function Index() {
       const n = [...prev];
       const nowTs = now.getTime();
       n.filter(a => a && !a.encerrado).forEach(a => {
-        const el = nowTs - (a.abertoEm || 0);
+        const el = businessElapsed(a.abertoEm || 0, nowTs);
         const rest = LIM - el;
         const isMe = !fAnalista || a.analista === fAnalista;
         const isAnSel = (a.etapa || "").toLowerCase().includes("analista selecionado");
