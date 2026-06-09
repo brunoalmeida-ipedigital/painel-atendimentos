@@ -996,6 +996,11 @@ export default function Index() {
           className="text-sm text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2 font-semibold hover:bg-rose-500/20 transition-colors"
           title="Exportar para PDF"
         >📄 PDF</button>
+        <button
+          onClick={() => exportList(filtered, agendados, "csv")}
+          className="text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-2 font-semibold hover:bg-emerald-500/20 transition-colors"
+          title="Exportar CSV (abre no LibreOffice Calc)"
+        >📊 LibreOffice</button>
         <div className="ml-auto text-sm text-muted-foreground font-medium">
           📋 <span className="text-foreground font-bold">{filtered.length}</span> registro(s) {lastSync && `• Sync: ${lastSync.toLocaleTimeString("pt-BR")}`}
         </div>
