@@ -6,6 +6,7 @@ import AgendamentosPanel from "@/components/AgendamentosPanel";
 import EmailsPanel from "@/components/EmailsPanel";
 import NotesPanel from "@/components/NotesPanel";
 import jsPDF from "jspdf";
+import { businessElapsed } from "@/lib/businessTime";
 
 // ── Config ────────────────────────────────────────────────────────
 const PIPE_ID = "823783";
