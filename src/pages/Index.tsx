@@ -5,6 +5,7 @@ import Dashboard from "@/components/Dashboard";
 import AgendamentosPanel from "@/components/AgendamentosPanel";
 import EmailsPanel from "@/components/EmailsPanel";
 import NotesPanel from "@/components/NotesPanel";
+import jsPDF from "jspdf";
 
 // ── Config ────────────────────────────────────────────────────────
 const PIPE_ID = "823783";
