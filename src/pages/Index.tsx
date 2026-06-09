@@ -851,89 +851,101 @@ export default function Index() {
           <option value="Média">🟡 Média</option>
         </select>
         <button onClick={clearEncerrados} className="text-sm text-destructive bg-destructive/10 border border-transparent rounded-lg px-3 py-2 font-semibold hover:bg-destructive/20 transition-colors">🗑 Limpar enc.</button>
-        <div className="ml-auto text-xs text-muted-foreground font-medium">
-          📋 {filtered.length} registro(s) {lastSync && `• Sync: ${lastSync.toLocaleTimeString("pt-BR")}`}
+        <button
+          onClick={() => exportList(filtered, agendados, "txt")}
+          className="text-sm text-blue-300 bg-blue-500/10 border border-blue-500/30 rounded-lg px-3 py-2 font-semibold hover:bg-blue-500/20 transition-colors"
+          title="Exportar para bloco de notas"
+        >📝 TXT</button>
+        <button
+          onClick={() => exportList(filtered, agendados, "pdf")}
+          className="text-sm text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2 font-semibold hover:bg-rose-500/20 transition-colors"
+          title="Exportar para PDF"
+        >📄 PDF</button>
+        <div className="ml-auto text-sm text-muted-foreground font-medium">
+          📋 <span className="text-foreground font-bold">{filtered.length}</span> registro(s) {lastSync && `• Sync: ${lastSync.toLocaleTimeString("pt-BR")}`}
         </div>
       </div>
 
-      {/* Kanban board */}
+      {/* Lista agrupada por Prioridade → Classificação */}
       {(() => {
-        const KANBAN_ETAPAS = [
-          "Analista Selecionado",
-          "Hora primeiro contato - TMR",
-          "Cliente Agendado/Reagendado",
-          "Em Configuração",
-          "Parado",
-          "FINALIZADO EM",
-        ];
-        // Inclui finalizados (encerrados) que pertencem ao analista filtrado
         const finalizados = data.filter(a => {
           if (!a || !a.encerrado) return false;
           const ma = !fAnalista || a.analista === fAnalista;
           return ma;
         });
         const todos = [...filtered, ...agendados, ...finalizados];
-        const grouped: Record<string, Atendimento[]> = {};
-        KANBAN_ETAPAS.forEach(e => { grouped[e] = []; });
-        const outros: Atendimento[] = [];
-        todos.forEach(a => {
-          const etapaLow = (a.etapa || "").toLowerCase();
-          let match = KANBAN_ETAPAS.find(e => etapaLow.includes(e.toLowerCase().slice(0, 10)));
-          if (!match && (a.encerrado || etapaLow.includes("finaliz") || etapaLow.includes("conclu") || etapaLow.includes("arquiv"))) {
-            match = "FINALIZADO EM";
-          }
-          if (match) grouped[match].push(a);
-          else outros.push(a);
-        });
-        if (outros.length) grouped["Outros"] = outros;
-        const cols = Object.keys(grouped);
+
+        const prioridades: { key: string; label: string; color: string; ring: string; bar: string }[] = [
+          { key: "Alta", label: "🔴 Alta Prioridade", color: "text-red-400", ring: "border-red-500/50", bar: "bg-red-500" },
+          { key: "Média", label: "🟡 Média Prioridade", color: "text-yellow-300", ring: "border-yellow-500/50", bar: "bg-yellow-500" },
+        ];
 
         return (
-          <div className="mb-8">
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-              {cols.map(col => {
-                const isPriority = col === "Analista Selecionado";
-                const isFinalizado = col === "FINALIZADO EM";
-                const cardCount = grouped[col].length;
-                return (
-                  <div
-                    key={col}
-                    className={`min-w-0 bg-card-alt/50 border-[3px] rounded-xl p-2.5 flex flex-col ${
-                      isPriority ? "border-primary/70 ring-1 ring-primary/20 bg-primary/5" : isFinalizado ? "border-emerald-500/40 ring-1 ring-emerald-500/10 bg-emerald-500/5" : "border-border"
-                    }`}
-                  >
-                    <div className={`flex items-center justify-between px-1.5 pb-2.5 mb-2 border-b-2 ${isPriority ? "border-primary/30" : isFinalizado ? "border-emerald-500/30" : "border-border/60"}`}>
-                      <h3 className={`text-sm font-extrabold uppercase tracking-wide truncate ${isPriority ? "text-primary" : isFinalizado ? "text-emerald-500" : "text-foreground"}`}>
-                        {isPriority && "⭐ "}{col}
-                      </h3>
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isPriority ? "bg-primary text-primary-foreground" : isFinalizado ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"}`}>
-                        {cardCount}
-                      </span>
-                    </div>
-                    <div className="space-y-2.5 max-h-[70vh] overflow-y-auto pr-1">
-                      {grouped[col].length === 0 ? (
-                        <div className="text-center py-8 text-sm text-muted-foreground font-medium">Vazio</div>
-                      ) : (
-                        grouped[col].map((a, i) => (
-                          <AttendanceCard
-                            key={a.id}
-                            item={a}
-                            index={i}
-                            now={now}
-                            onUpdateCard={updateCard}
-                            onComment={(id, text) => setComent({ id, text })}
-                            onEdit={item => setModEdit({ ...item })}
-                            onCopyMsg={copyContactMsg}
-                            onToggleTent={tent}
-                            fAnalista={fAnalista}
-                          />
-                        ))
-                      )}
-                    </div>
+          <div className="mb-8 space-y-6">
+            {prioridades.map(p => {
+              const itens = todos.filter(a => (a.dem || "Média") === p.key);
+              if (itens.length === 0) return null;
+              const porClas: Record<string, Atendimento[]> = {};
+              itens.forEach(a => {
+                const k = a.clas || "Outros";
+                (porClas[k] ||= []).push(a);
+              });
+              const classes = Object.keys(porClas).sort();
+
+              return (
+                <section key={p.key} className={`rounded-2xl border-2 ${p.ring} bg-card/40 p-4 shadow-lg`}>
+                  <header className="flex items-center justify-between mb-4 pb-3 border-b-2 border-border/60">
+                    <h2 className={`text-2xl font-black uppercase tracking-tight ${p.color}`}>
+                      {p.label}
+                    </h2>
+                    <span className={`text-base font-black px-4 py-1.5 rounded-full ${p.bar} text-black shadow-md`}>
+                      {itens.length}
+                    </span>
+                  </header>
+
+                  <div className="space-y-5">
+                    {classes.map(clas => {
+                      const color = CHEX[clas] || "#94a3b8";
+                      return (
+                        <div key={clas}>
+                          <div className="flex items-center gap-3 mb-2.5">
+                            <span className="inline-block w-3 h-3 rounded-full shadow" style={{ background: color }} />
+                            <h3 className="text-lg font-extrabold uppercase tracking-wider" style={{ color }}>
+                              {clas}
+                            </h3>
+                            <span className="text-sm font-bold text-muted-foreground bg-muted px-2.5 py-0.5 rounded-full">
+                              {porClas[clas].length}
+                            </span>
+                            <div className="flex-1 h-px bg-border" />
+                          </div>
+                          <div className="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                            {porClas[clas].map((a, i) => (
+                              <AttendanceCard
+                                key={a.id}
+                                item={a}
+                                index={i}
+                                now={now}
+                                onUpdateCard={updateCard}
+                                onComment={(id, text) => setComent({ id, text })}
+                                onEdit={item => setModEdit({ ...item })}
+                                onCopyMsg={copyContactMsg}
+                                onToggleTent={tent}
+                                fAnalista={fAnalista}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
+                </section>
+              );
+            })}
+            {todos.length === 0 && (
+              <div className="text-center py-16 text-lg text-muted-foreground font-semibold">
+                Nenhum atendimento no momento.
+              </div>
+            )}
           </div>
         );
       })()}
