@@ -86,7 +86,7 @@ const parseDate = (val: string | null | undefined) => {
 export default function AttendanceCard({ item: a, now, onUpdateCard, onEdit, onCopyMsg, onToggleTent, fAnalista }: Props) {
   const nowTs = now.getTime();
   const ab = a.abertoEm || nowTs;
-  const el = a.encerrado ? (a.encerradoEm || nowTs) - ab : nowTs - ab;
+  const el = a.encerrado ? businessElapsed(ab, a.encerradoEm || nowTs) : businessElapsed(ab, nowTs);
   const rest = LIM - el;
 
   const isVencido = rest < 0;
