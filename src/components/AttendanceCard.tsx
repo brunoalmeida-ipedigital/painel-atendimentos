@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { businessElapsed } from "@/lib/businessTime";
 
 // ── Config ──
 const ETAPAS = [
