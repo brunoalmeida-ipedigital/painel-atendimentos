@@ -900,7 +900,7 @@ export default function Index() {
         <div className="rounded-2xl p-5 bg-card border-2 border-rose-500/50 shadow-lg">
           <div className="text-sm uppercase font-extrabold text-rose-300 tracking-wide mb-1">Próximos a Vencer ⌛</div>
           {aVencer.slice(0, 3).map(t => {
-            const rest = LIM - (now.getTime() - (t.abertoEm || 0));
+            const rest = LIM - businessElapsed(t.abertoEm || 0, now.getTime());
             return (
               <div key={t.id} className="flex justify-between text-sm py-0.5">
                 <span className="truncate max-w-[110px] font-bold text-foreground">{t.lic} | {t.cli.slice(0, 8)}</span>
