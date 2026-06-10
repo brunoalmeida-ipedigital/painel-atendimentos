@@ -1007,7 +1007,7 @@ export default function Index() {
         </div>
       </div>
 
-      {/* Lista agrupada por Prioridade → Classificação */}
+      {/* Lista em formato de tabela (linhas) — agrupada por Prioridade (Alta → Média) */}
       {(() => {
         const finalizados = data.filter(a => {
           if (!a || !a.encerrado) return false;
@@ -1016,55 +1016,94 @@ export default function Index() {
         });
         const todos = [...filtered, ...agendados, ...finalizados];
 
-        const prioridades: { key: string; label: string; color: string; ring: string; bar: string }[] = [
-          { key: "Alta", label: "🔴 Alta Prioridade", color: "text-red-400", ring: "border-red-500/50", bar: "bg-red-500" },
-          { key: "Média", label: "🟡 Média Prioridade", color: "text-yellow-300", ring: "border-yellow-500/50", bar: "bg-yellow-500" },
-        ];
+        const ordem: Record<string, number> = { Alta: 0, "Média": 1 };
+        const linhas = [...todos].sort((a, b) => {
+          const da = ordem[a.dem || "Média"] ?? 9;
+          const db = ordem[b.dem || "Média"] ?? 9;
+          if (da !== db) return da - db;
+          return (a.abertoEm || 0) - (b.abertoEm || 0);
+        });
+
+        const fmtAberto = (ts?: number) => {
+          if (!ts) return "—";
+          const d = new Date(ts);
+          return `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()}, ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
+        };
+        const obsResumo = (raw: string) => {
+          if (!raw) return "";
+          const txt = raw.replace(/\n\n\[salvo em:[^\]]+\]\s*$/, "").trim();
+          return txt.length > 60 ? txt.slice(0, 60) + "…" : txt;
+        };
 
         return (
-          <div className="mb-8 space-y-6">
-            {prioridades.map(p => {
-              const itens = todos
-                .filter(a => (a.dem || "Média") === p.key)
-                .sort((a, b) => (a.abertoEm || 0) - (b.abertoEm || 0));
-              if (itens.length === 0) return null;
-
-              return (
-                <section key={p.key} className={`rounded-2xl border-2 ${p.ring} bg-card/40 p-4 shadow-lg`}>
-                  <header className="flex items-center justify-between mb-4 pb-3 border-b-2 border-border/60">
-                    <h2 className={`text-2xl font-black uppercase tracking-tight ${p.color}`}>
-                      {p.label}
-                    </h2>
-                    <span className={`text-base font-black px-4 py-1.5 rounded-full ${p.bar} text-black shadow-md`}>
-                      {itens.length}
-                    </span>
-                  </header>
-
-                  <div className="flex flex-col gap-3">
-                    {itens.map((a, i) => (
-                      <AttendanceCard
-                        key={a.id}
-                        item={a}
-                        index={i}
-                        now={now}
-                        onUpdateCard={updateCard}
-                        onComment={(id, text) => setComent({ id, text })}
-                        onEdit={item => setModEdit({ ...item })}
-                        onCopyMsg={copyContactMsg}
-                        onToggleTent={tent}
-                        fAnalista={fAnalista}
-                      />
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
-
-            {todos.length === 0 && (
-              <div className="text-center py-16 text-lg text-muted-foreground font-semibold">
-                Nenhum atendimento no momento.
-              </div>
-            )}
+          <div className="mb-8 rounded-xl border-2 border-border bg-card/40 overflow-hidden shadow-lg">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead className="bg-[#0a0a0a] text-[#c8c8c8] uppercase tracking-wider text-xs">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-bold border-b border-border">Prioridade</th>
+                    <th className="text-left px-3 py-2 font-bold border-b border-border">Classificação</th>
+                    <th className="text-left px-3 py-2 font-bold border-b border-border">Licença</th>
+                    <th className="text-left px-3 py-2 font-bold border-b border-border">Cliente</th>
+                    <th className="text-left px-3 py-2 font-bold border-b border-border">Telefone</th>
+                    <th className="text-left px-3 py-2 font-bold border-b border-border">Etapa</th>
+                    <th className="text-left px-3 py-2 font-bold border-b border-border">Aberto em</th>
+                    <th className="text-left px-3 py-2 font-bold border-b border-border">Obs</th>
+                    <th className="px-2 py-2 border-b border-border"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {linhas.map((a, i) => {
+                    const isExp = expandedRow === a.id;
+                    const prioColor = a.dem === "Alta" ? "text-red-400" : "text-yellow-300";
+                    const el = a.encerrado ? businessElapsed(a.abertoEm || 0, a.encerradoEm || now.getTime()) : businessElapsed(a.abertoEm || 0, now.getTime());
+                    const rest = LIM - el;
+                    const tCls = a.encerrado ? "text-muted-foreground" : rest < 0 ? "text-destructive" : rest <= AV20 ? "text-yellow-400" : "text-emerald-400";
+                    return (
+                      <Fragment key={a.id}>
+                        <tr
+                          onClick={() => setExpandedRow(isExp ? null : a.id)}
+                          className={`border-b border-border/40 hover:bg-muted/30 cursor-pointer ${a.encerrado ? "opacity-60" : ""} ${i % 2 === 0 ? "bg-card/20" : ""}`}
+                        >
+                          <td className={`px-3 py-2 font-bold ${prioColor}`}>{a.dem || "Média"}</td>
+                          <td className="px-3 py-2 text-foreground font-semibold">{a.clas}</td>
+                          <td className="px-3 py-2 font-mono font-bold text-[#c8c8c8]">{a.lic}</td>
+                          <td className="px-3 py-2 text-foreground font-semibold truncate max-w-[220px]">{a.cli || "—"}</td>
+                          <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{a.cel || "—"}</td>
+                          <td className="px-3 py-2 text-foreground">{a.etapa}</td>
+                          <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
+                            <div>{fmtAberto(a.abertoEm)}</div>
+                            <div className={`font-mono text-xs font-bold ${tCls}`}>{fmt(el)}</div>
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground truncate max-w-[200px]">{obsResumo(a.comentario || "")}</td>
+                          <td className="px-2 py-2 text-muted-foreground text-xs">{isExp ? "▲" : "▼"}</td>
+                        </tr>
+                        {isExp && (
+                          <tr className="bg-background/60">
+                            <td colSpan={9} className="p-3">
+                              <AttendanceCard
+                                item={a}
+                                index={i}
+                                now={now}
+                                onUpdateCard={updateCard}
+                                onComment={(id, text) => setComent({ id, text })}
+                                onEdit={item => setModEdit({ ...item })}
+                                onCopyMsg={copyContactMsg}
+                                onToggleTent={tent}
+                                fAnalista={fAnalista}
+                              />
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                  {linhas.length === 0 && (
+                    <tr><td colSpan={9} className="text-center py-12 text-muted-foreground font-semibold">Nenhum atendimento no momento.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         );
       })()}
