@@ -254,6 +254,7 @@ export default function Index() {
   });
 
   const [activeTab, setActiveTab] = useState<"list" | "dashboard" | "agendamentos" | "emails">("list");
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   const [busca, setBusca] = useState("");
   const [fClas, setFClas] = useState("");
