@@ -256,6 +256,33 @@ export default function Index() {
   const [activeTab, setActiveTab] = useState<"list" | "dashboard" | "agendamentos" | "emails">("list");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
+  // Contato de hoje — armazenado por id+data, reseta a cada dia
+  const todayKey = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+  };
+  const [contatadoHoje, setContatadoHoje] = useState<Record<string, string>>(() => {
+    try {
+      const raw = localStorage.getItem("cat_contatado_hoje");
+      if (!raw) return {};
+      const obj = JSON.parse(raw) as Record<string, string>;
+      const today = todayKey();
+      // limpa entradas antigas
+      const cleaned: Record<string, string> = {};
+      Object.entries(obj).forEach(([k, v]) => { if (v === today) cleaned[k] = v; });
+      return cleaned;
+    } catch { return {}; }
+  });
+  const toggleContatadoHoje = (id: string) => {
+    setContatadoHoje(prev => {
+      const today = todayKey();
+      const n = { ...prev };
+      if (n[id] === today) delete n[id]; else n[id] = today;
+      localStorage.setItem("cat_contatado_hoje", JSON.stringify(n));
+      return n;
+    });
+  };
+
   const [busca, setBusca] = useState("");
   const [fClas, setFClas] = useState("");
   const [fDem, setFDem] = useState("");
