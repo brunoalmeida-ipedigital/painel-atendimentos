@@ -1023,14 +1023,10 @@ export default function Index() {
         return (
           <div className="mb-8 space-y-6">
             {prioridades.map(p => {
-              const itens = todos.filter(a => (a.dem || "Média") === p.key);
+              const itens = todos
+                .filter(a => (a.dem || "Média") === p.key)
+                .sort((a, b) => (a.abertoEm || 0) - (b.abertoEm || 0));
               if (itens.length === 0) return null;
-              const porClas: Record<string, Atendimento[]> = {};
-              itens.forEach(a => {
-                const k = a.clas || "Outros";
-                (porClas[k] ||= []).push(a);
-              });
-              const classes = Object.keys(porClas).sort();
 
               return (
                 <section key={p.key} className={`rounded-2xl border-2 ${p.ring} bg-card/40 p-4 shadow-lg`}>
@@ -1043,44 +1039,26 @@ export default function Index() {
                     </span>
                   </header>
 
-                  <div className="space-y-5">
-                    {classes.map(clas => {
-                      const color = CHEX[clas] || "#94a3b8";
-                      return (
-                        <div key={clas}>
-                          <div className="flex items-center gap-3 mb-2.5">
-                            <span className="inline-block w-3 h-3 rounded-full shadow" style={{ background: color }} />
-                            <h3 className="text-lg font-extrabold uppercase tracking-wider" style={{ color }}>
-                              {clas}
-                            </h3>
-                            <span className="text-sm font-bold text-muted-foreground bg-muted px-2.5 py-0.5 rounded-full">
-                              {porClas[clas].length}
-                            </span>
-                            <div className="flex-1 h-px bg-border" />
-                          </div>
-                          <div className="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-                            {porClas[clas].map((a, i) => (
-                              <AttendanceCard
-                                key={a.id}
-                                item={a}
-                                index={i}
-                                now={now}
-                                onUpdateCard={updateCard}
-                                onComment={(id, text) => setComent({ id, text })}
-                                onEdit={item => setModEdit({ ...item })}
-                                onCopyMsg={copyContactMsg}
-                                onToggleTent={tent}
-                                fAnalista={fAnalista}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div className="flex flex-col gap-3">
+                    {itens.map((a, i) => (
+                      <AttendanceCard
+                        key={a.id}
+                        item={a}
+                        index={i}
+                        now={now}
+                        onUpdateCard={updateCard}
+                        onComment={(id, text) => setComent({ id, text })}
+                        onEdit={item => setModEdit({ ...item })}
+                        onCopyMsg={copyContactMsg}
+                        onToggleTent={tent}
+                        fAnalista={fAnalista}
+                      />
+                    ))}
                   </div>
                 </section>
               );
             })}
+
             {todos.length === 0 && (
               <div className="text-center py-16 text-lg text-muted-foreground font-semibold">
                 Nenhum atendimento no momento.
