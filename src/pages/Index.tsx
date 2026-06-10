@@ -256,6 +256,33 @@ export default function Index() {
   const [activeTab, setActiveTab] = useState<"list" | "dashboard" | "agendamentos" | "emails">("list");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
+  // Contato de hoje — armazenado por id+data, reseta a cada dia
+  const todayKey = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+  };
+  const [contatadoHoje, setContatadoHoje] = useState<Record<string, string>>(() => {
+    try {
+      const raw = localStorage.getItem("cat_contatado_hoje");
+      if (!raw) return {};
+      const obj = JSON.parse(raw) as Record<string, string>;
+      const today = todayKey();
+      // limpa entradas antigas
+      const cleaned: Record<string, string> = {};
+      Object.entries(obj).forEach(([k, v]) => { if (v === today) cleaned[k] = v; });
+      return cleaned;
+    } catch { return {}; }
+  });
+  const toggleContatadoHoje = (id: string) => {
+    setContatadoHoje(prev => {
+      const today = todayKey();
+      const n = { ...prev };
+      if (n[id] === today) delete n[id]; else n[id] = today;
+      localStorage.setItem("cat_contatado_hoje", JSON.stringify(n));
+      return n;
+    });
+  };
+
   const [busca, setBusca] = useState("");
   const [fClas, setFClas] = useState("");
   const [fDem, setFDem] = useState("");
@@ -1039,48 +1066,87 @@ export default function Index() {
           <div className="mb-8 rounded-xl border-2 border-border bg-card/40 overflow-hidden shadow-lg">
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse">
-                <thead className="bg-[#0a0a0a] text-[#c8c8c8] uppercase tracking-wider text-xs">
+                <thead className="bg-gradient-to-r from-[#0a0a0a] via-[#141414] to-[#0a0a0a] text-[#c8c8c8] uppercase tracking-wider text-xs">
                   <tr>
-                    <th className="text-left px-3 py-2 font-bold border-b border-border">Prioridade</th>
-                    <th className="text-left px-3 py-2 font-bold border-b border-border">Classificação</th>
-                    <th className="text-left px-3 py-2 font-bold border-b border-border">Licença</th>
-                    <th className="text-left px-3 py-2 font-bold border-b border-border">Cliente</th>
-                    <th className="text-left px-3 py-2 font-bold border-b border-border">Telefone</th>
-                    <th className="text-left px-3 py-2 font-bold border-b border-border">Etapa</th>
-                    <th className="text-left px-3 py-2 font-bold border-b border-border">Aberto em</th>
-                    <th className="text-left px-3 py-2 font-bold border-b border-border">Obs</th>
-                    <th className="px-2 py-2 border-b border-border"></th>
+                    <th className="text-center px-2 py-2.5 font-bold border-b-2 border-primary/40">✓ Hoje</th>
+                    <th className="text-left px-3 py-2.5 font-bold border-b-2 border-primary/40">Prioridade</th>
+                    <th className="text-left px-3 py-2.5 font-bold border-b-2 border-primary/40">Classificação</th>
+                    <th className="text-left px-3 py-2.5 font-bold border-b-2 border-primary/40">Licença</th>
+                    <th className="text-left px-3 py-2.5 font-bold border-b-2 border-primary/40">Cliente</th>
+                    <th className="text-left px-3 py-2.5 font-bold border-b-2 border-primary/40">Telefone</th>
+                    <th className="text-left px-3 py-2.5 font-bold border-b-2 border-primary/40">Etapa</th>
+                    <th className="text-left px-3 py-2.5 font-bold border-b-2 border-primary/40">Aberto em</th>
+                    <th className="text-left px-3 py-2.5 font-bold border-b-2 border-primary/40">Obs</th>
+                    <th className="px-2 py-2.5 border-b-2 border-primary/40"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {linhas.map((a, i) => {
                     const isExp = expandedRow === a.id;
-                    const prioColor = a.dem === "Alta" ? "text-red-400" : "text-yellow-300";
+                    const today = todayKey();
+                    const isContatado = contatadoHoje[a.id] === today;
+                    const isAlta = a.dem === "Alta";
+                    const prioBadge = isAlta
+                      ? "bg-red-500/15 text-red-300 border border-red-500/40"
+                      : "bg-yellow-500/15 text-yellow-300 border border-yellow-500/40";
+                    const clasHex = CHEX[a.clas] || "#64748b";
                     const el = a.encerrado ? businessElapsed(a.abertoEm || 0, a.encerradoEm || now.getTime()) : businessElapsed(a.abertoEm || 0, now.getTime());
                     const rest = LIM - el;
                     const tCls = a.encerrado ? "text-muted-foreground" : rest < 0 ? "text-destructive" : rest <= AV20 ? "text-yellow-400" : "text-emerald-400";
+                    const rowBg = a.encerrado
+                      ? "bg-muted/10"
+                      : isContatado
+                        ? "bg-emerald-500/10 hover:bg-emerald-500/15"
+                        : isAlta
+                          ? "bg-red-500/5 hover:bg-red-500/10"
+                          : i % 2 === 0 ? "bg-card/30 hover:bg-muted/40" : "hover:bg-muted/40";
+                    const leftBar = isAlta ? "border-l-4 border-l-red-500" : "border-l-4 border-l-yellow-500/60";
                     return (
                       <Fragment key={a.id}>
                         <tr
                           onClick={() => setExpandedRow(isExp ? null : a.id)}
-                          className={`border-b border-border/40 hover:bg-muted/30 cursor-pointer ${a.encerrado ? "opacity-60" : ""} ${i % 2 === 0 ? "bg-card/20" : ""}`}
+                          className={`border-b border-border/40 cursor-pointer transition-colors ${rowBg} ${leftBar} ${a.encerrado ? "opacity-60" : ""}`}
                         >
-                          <td className={`px-3 py-2 font-bold ${prioColor}`}>{a.dem || "Média"}</td>
-                          <td className="px-3 py-2 text-foreground font-semibold">{a.clas}</td>
-                          <td className="px-3 py-2 font-mono font-bold text-[#c8c8c8]">{a.lic}</td>
+                          <td className="px-2 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                            <label className="inline-flex items-center justify-center cursor-pointer select-none" title={isContatado ? "Contato feito hoje" : "Marcar contato de hoje"}>
+                              <input
+                                type="checkbox"
+                                checked={isContatado}
+                                onChange={() => toggleContatadoHoje(a.id)}
+                                className="sr-only peer"
+                              />
+                              <span className={`w-6 h-6 rounded-md border-2 flex items-center justify-center text-xs font-black transition-all ${isContatado ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/40" : "bg-background border-border hover:border-emerald-400"}`}>
+                                {isContatado ? "✓" : ""}
+                              </span>
+                            </label>
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className={`text-xs font-extrabold px-2 py-1 rounded-md ${prioBadge}`}>
+                              {isAlta ? "🔴 Alta" : "🟡 Média"}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2">
+                            <span
+                              className="text-xs font-bold px-2 py-1 rounded-md border"
+                              style={{ background: `${clasHex}22`, color: clasHex, borderColor: `${clasHex}66` }}
+                            >
+                              {a.clas}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 font-mono font-bold text-[#dcdcdc] bg-[#0e0e0e]/40">{a.lic}</td>
                           <td className="px-3 py-2 text-foreground font-semibold truncate max-w-[220px]">{a.cli || "—"}</td>
-                          <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{a.cel || "—"}</td>
+                          <td className="px-3 py-2 text-sky-300 whitespace-nowrap font-medium">{a.cel || "—"}</td>
                           <td className="px-3 py-2 text-foreground">{a.etapa}</td>
                           <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
-                            <div>{fmtAberto(a.abertoEm)}</div>
-                            <div className={`font-mono text-xs font-bold ${tCls}`}>{fmt(el)}</div>
+                            <div className="text-xs">{fmtAberto(a.abertoEm)}</div>
+                            <div className={`font-mono text-sm font-black ${tCls}`}>{fmt(el)}</div>
                           </td>
                           <td className="px-3 py-2 text-muted-foreground truncate max-w-[200px]">{obsResumo(a.comentario || "")}</td>
                           <td className="px-2 py-2 text-muted-foreground text-xs">{isExp ? "▲" : "▼"}</td>
                         </tr>
                         {isExp && (
                           <tr className="bg-background/60">
-                            <td colSpan={9} className="p-3">
+                            <td colSpan={10} className="p-3">
                               <AttendanceCard
                                 item={a}
                                 index={i}
@@ -1099,7 +1165,7 @@ export default function Index() {
                     );
                   })}
                   {linhas.length === 0 && (
-                    <tr><td colSpan={9} className="text-center py-12 text-muted-foreground font-semibold">Nenhum atendimento no momento.</td></tr>
+                    <tr><td colSpan={10} className="text-center py-12 text-muted-foreground font-semibold">Nenhum atendimento no momento.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1107,6 +1173,7 @@ export default function Index() {
           </div>
         );
       })()}
+
 
       {/* New attendance form */}
       <div className="bg-card border border-border rounded-xl p-5 mb-6">
