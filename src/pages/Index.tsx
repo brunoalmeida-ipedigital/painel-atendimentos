@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import AttendanceCard, { type Atendimento } from "@/components/AttendanceCard";
 import Dashboard from "@/components/Dashboard";
