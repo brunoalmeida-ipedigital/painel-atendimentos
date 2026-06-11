@@ -6,13 +6,10 @@ import AgendamentosPanel from "@/components/AgendamentosPanel";
 import EmailsPanel from "@/components/EmailsPanel";
 import NotesPanel from "@/components/NotesPanel";
 import jsPDF from "jspdf";
+import * as XLSX from "xlsx";
 import { businessElapsed } from "@/lib/businessTime";
 
 // ── Config ────────────────────────────────────────────────────────
-const PIPE_ID = "823783";
-const POLL_MS = 60000;
-const DONE_PHASES = new Set(["Finalizado", "Arquivado", "Concluido", "Concluído", "Finalizado em", "FINALIZADO EM"]);
-
 const ETAPAS = [
   "Caixa de entrada", "Analista Selecionado", "Hora primeiro contato - TMR",
   "Cliente Agendado/Reagendado", "Parado", "Em Configuração",
@@ -37,16 +34,6 @@ const LIM = 4 * 3600000;
 const AV20 = 20 * 60000;
 const AV05 = 5 * 60000;
 
-// ── Pipefy via Edge Function ──
-const pipefyQuery = async (query: string, variables: Record<string, unknown> = {}) => {
-  const { data, error } = await supabase.functions.invoke("pipefy-proxy", {
-    body: { query, variables },
-  });
-  if (error) throw new Error(`Pipefy proxy error: ${error.message}`);
-  if (data?.errors?.length) throw new Error(data.errors[0].message);
-  return data?.data || data;
-};
-
 // ── Slack via Edge Function ──
 const slackNotify = async (payload: Record<string, unknown>) => {
   try {
@@ -59,60 +46,44 @@ const slackNotify = async (payload: Record<string, unknown>) => {
 };
 
 // ── DB helpers ──
+const rowFromAt = (a: Atendimento) => ({
+  pipefy_card_id: a.id,
+  lic: a.lic || "",
+  cli: a.cli || "",
+  cel: a.cel || "",
+  clas: a.clas || "NFe",
+  dem: a.dem || "Média",
+  stat: a.stat || "",
+  etapa: a.etapa || "Caixa de entrada",
+  analista: a.analista || "",
+  comentario: a.comentario || "",
+  hora_contato: a.horaContato || "",
+  tentativas: a.tentativas || [false, false, false, false, false, false, false, false],
+  aberto_em: a.abertoEm || Date.now(),
+  encerrado: a.encerrado || false,
+  encerrado_em: a.encerradoEm || null,
+  agendado_em: a.agendadoEm || "",
+  a20: a.a20 || false,
+  a10: a.a10 || false,
+  a4h: a.a4h || false,
+  a_agd: a.aAgd || false,
+  a05: a.a05 || false,
+});
+
 const upsertAtendimento = async (a: Atendimento) => {
-  const row = {
-    pipefy_card_id: a.id,
-    lic: a.lic || "",
-    cli: a.cli || "",
-    cel: a.cel || "",
-    clas: a.clas || "NFe",
-    dem: a.dem || "Média",
-    stat: a.stat || "",
-    etapa: a.etapa || "Caixa de entrada",
-    analista: a.analista || "",
-    comentario: a.comentario || "",
-    hora_contato: a.horaContato || "",
-    tentativas: a.tentativas || [false, false, false, false, false, false, false, false],
-    aberto_em: a.abertoEm || Date.now(),
-    encerrado: a.encerrado || false,
-    encerrado_em: a.encerradoEm || null,
-    agendado_em: a.agendadoEm || "",
-    a20: a.a20 || false,
-    a10: a.a10 || false,
-    a4h: a.a4h || false,
-    a_agd: a.aAgd || false,
-    a05: a.a05 || false,
-  };
-  const { error } = await supabase.from("atendimentos").upsert(row, { onConflict: "pipefy_card_id" });
+  const { error } = await supabase.from("atendimentos").upsert(rowFromAt(a), { onConflict: "pipefy_card_id" });
   if (error) console.warn("DB upsert error:", error.message);
 };
 
 const upsertMany = async (items: Atendimento[]) => {
-  const rows = items.map(a => ({
-    pipefy_card_id: a.id,
-    lic: a.lic || "",
-    cli: a.cli || "",
-    cel: a.cel || "",
-    clas: a.clas || "NFe",
-    dem: a.dem || "Média",
-    stat: a.stat || "",
-    etapa: a.etapa || "Caixa de entrada",
-    analista: a.analista || "",
-    comentario: a.comentario || "",
-    hora_contato: a.horaContato || "",
-    tentativas: a.tentativas || [false, false, false, false, false, false, false, false],
-    aberto_em: a.abertoEm || Date.now(),
-    encerrado: a.encerrado || false,
-    encerrado_em: a.encerradoEm || null,
-    agendado_em: a.agendadoEm || "",
-    a20: a.a20 || false,
-    a10: a.a10 || false,
-    a4h: a.a4h || false,
-    a_agd: a.aAgd || false,
-    a05: a.a05 || false,
-  }));
-  const { error } = await supabase.from("atendimentos").upsert(rows, { onConflict: "pipefy_card_id" });
+  if (!items.length) return;
+  const { error } = await supabase.from("atendimentos").upsert(items.map(rowFromAt), { onConflict: "pipefy_card_id" });
   if (error) console.warn("DB bulk upsert error:", error.message);
+};
+
+const deleteAtendimento = async (id: string) => {
+  const { error } = await supabase.from("atendimentos").delete().eq("pipefy_card_id", id);
+  if (error) console.warn("DB delete error:", error.message);
 };
 
 const dbRowToAtendimento = (r: any): Atendimento => ({
@@ -145,32 +116,12 @@ const loadFromDB = async (): Promise<Atendimento[]> => {
   return (data || []).map(dbRowToAtendimento);
 };
 
-// ── Field helpers ──
-const fieldVal = (card: any, ...keys: string[]) => {
-  if (!card) return "";
-  const arr = card.fields || [];
-  for (const key of keys) {
-    const k = key.toLowerCase().replace(/[:\s]/g, "");
-    for (const f of arr) {
-      const label = (f.name || "").toLowerCase().replace(/[:\s]/g, "");
-      if (label === k || label.includes(k) || k.includes(label.slice(0, Math.min(label.length, 15)))) {
-        let v = (f.value || "").trim();
-        v = v.replace(/^\["(.+)"\]$/, "$1").replace(/^"(.+)"$/, "$1");
-        if (v && v !== "[]") return v;
-      }
-    }
-  }
-  return "";
-};
-
 const parseDate = (val: string | null | undefined) => {
   if (!val) return null;
-  // Handle ISO with timezone (e.g. 2025-01-15T14:00:00-03:00)
   if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}T/.test(val)) {
     const d = new Date(val);
     if (!isNaN(d.getTime())) return d;
   }
-  // Handle BR format DD/MM/YYYY HH:mm
   if (typeof val === "string" && val.includes("/")) {
     const [datePart, timePart] = val.split(" ");
     const parts = datePart.split("/");
@@ -182,7 +133,6 @@ const parseDate = (val: string | null | undefined) => {
       if (!isNaN(d2.getTime())) return d2;
     }
   }
-  // Handle plain ISO date without timezone (treat as local)
   if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}/.test(val)) {
     const localVal = val.includes("T") ? val : val + "T00:00:00";
     const d = new Date(localVal);
@@ -193,23 +143,17 @@ const parseDate = (val: string | null | undefined) => {
   return null;
 };
 
-const getAnalista = (card: any) => {
-  if (!card) return "";
-  let name = "";
-  if (card.assignees?.length) name = card.assignees[0]?.name || card.assignees[0];
-  else {
-    const novo = fieldVal(card, "ANALISTA SELECIONADO (NOVO)");
-    if (novo) name = novo;
-    else {
-      const sel = fieldVal(card, "ANALISTA SELECIONADO");
-      if (sel) name = sel;
-      else {
-        const nom = fieldVal(card, "Nome do analista");
-        if (nom && !["cliente", "CLIENTE"].includes(nom)) name = nom;
-      }
-    }
+// Parse date from spreadsheet cell (string, number serial, or Date)
+const parseSheetDate = (val: unknown): number => {
+  if (val == null || val === "") return Date.now();
+  if (val instanceof Date) return val.getTime();
+  if (typeof val === "number") {
+    // Excel serial date (days since 1899-12-30)
+    const ms = Math.round((val - 25569) * 86400 * 1000);
+    return ms;
   }
-  return typeof name === "string" ? name.toUpperCase() : "";
+  const d = parseDate(String(val));
+  return d ? d.getTime() : Date.now();
 };
 
 const p2 = (n: number) => String(n).padStart(2, "0");
@@ -230,23 +174,36 @@ const fmtM = (ms: number) => {
   return h > 0 ? `${h}h ${p2(m)}m` : `${m}m`;
 };
 
-const PIPE_QUERY = `
-  query FetchPipe($id: ID!) {
-    pipe(id: $id) {
-      id name
-      phases { id name done cards(first: 50) { edges { node { id title createdAt current_phase { name } assignees { id name } fields { name value datetime_value } } } } }
+// Normalize a header for matching (lowercase, no accents, no spaces)
+const normKey = (s: string) =>
+  s.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+
+const HEADER_ALIASES: Record<string, string[]> = {
+  dem: ["prioridade", "demanda"],
+  clas: ["classificacao", "classificao", "categoria", "clas"],
+  lic: ["licenca", "licen", "lic"],
+  cli: ["cliente", "nome", "cli"],
+  cel: ["telefone", "celular", "tel", "fone"],
+  etapa: ["etapa", "fase", "status"],
+  abertoEm: ["abertoem", "dataabertura", "abertura", "aberto"],
+  comentario: ["observacao", "obs", "observacoes", "comentario", "nota"],
+};
+
+const mapHeaders = (headers: string[]): Record<string, number> => {
+  const map: Record<string, number> = {};
+  headers.forEach((h, i) => {
+    const k = normKey(h);
+    for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
+      if (aliases.includes(k)) { map[field] = i; break; }
     }
-  }
-`;
+  });
+  return map;
+};
 
 export default function Index() {
   const [data, setData] = useState<Atendimento[]>([]);
   const [now, setNow] = useState(new Date());
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const [lastSync, setLastSync] = useState<Date | null>(null);
-  const [phaseIds, setPhaseIds] = useState<Record<string, string>>({});
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const seenCards = useRef(new Set<string>());
   const slackSent = useRef(new Set<string>());
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem("cat_dark");
@@ -267,7 +224,6 @@ export default function Index() {
       if (!raw) return {};
       const obj = JSON.parse(raw) as Record<string, string>;
       const today = todayKey();
-      // limpa entradas antigas
       const cleaned: Record<string, string> = {};
       Object.entries(obj).forEach(([k, v]) => { if (v === today) cleaned[k] = v; });
       return cleaned;
@@ -299,6 +255,7 @@ export default function Index() {
 
   const [novo, setNovo] = useState({ lic: "", cli: "", cel: "", horaContato: "", clas: "NFe", dem: "Alta", stat: "Normal" });
   const fLicRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") Notification.requestPermission();
@@ -326,109 +283,13 @@ export default function Index() {
 
   // ── Load from DB on mount ──
   useEffect(() => {
-    loadFromDB().then(rows => {
-      if (rows.length > 0) setData(rows);
-      fetchData(false);
-    });
+    loadFromDB().then(rows => setData(rows));
   }, []);
-
-  // ── Sync with Pipefy ──
-  const fetchData = useCallback(async (silent = false) => {
-    try {
-      const resp = await pipefyQuery(PIPE_QUERY, { id: PIPE_ID });
-      if (!resp?.pipe) throw new Error("Resposta inválida do Pipefy");
-      const pipe = resp.pipe;
-      const flat: Atendimento[] = [];
-      const pIds: Record<string, string> = {};
-
-      (pipe.phases || []).forEach((ph: any) => {
-        if (!ph) return;
-        pIds[ph.name] = ph.id;
-        const isEncerrado = !!ph.done || Array.from(DONE_PHASES).some(d => d.toLowerCase() === (ph.name || "").toLowerCase());
-        (ph.cards?.edges || []).forEach(({ node: c }: any) => {
-          // Carrega somente os atendimentos do analista BRUNO
-          if ((getAnalista(c) || "").toUpperCase() !== "BRUNO") return;
-          const lic = fieldVal(c, "Código da Licença", "licenca") || c.title?.split(" - ")[0]?.trim() || c.id.slice(-6).toUpperCase();
-          const cli = fieldVal(c, "Nome do Cliente", "nome") || c.title?.trim() || "";
-          let clas = fieldVal(c, "CATEGORIA - CONFIGURAÇÃO", "CATEGORIA - ERRO", "CATEGORIA CHAMADO", "CATEGORIA");
-          const foundClas = Object.keys(CHEX).find(k => clas.toLowerCase().includes(k.toLowerCase()));
-          if (foundClas) clas = foundClas;
-          else if (!clas || !Object.keys(CHEX).includes(clas)) clas = "NFe";
-          const dem = fieldVal(c, "Prioridade").toLowerCase().includes("alta") ? "Alta" : "Média";
-          const dtVal = c.createdAt;
-          const fields = c.fields || [];
-          const fHora = fields.find((f: any) => f.name?.toLowerCase().includes("primeiro contato"));
-          const parsedDate = parseDate(dtVal) || parseDate(fHora?.datetime_value) || parseDate(fHora?.value) || new Date();
-          const openedAt = parsedDate.getTime();
-
-          const agendField = fields.find((f: any) => {
-            const n = (f.name || "").toLowerCase();
-            return n.includes("agendad") || n.includes("reagendad") || n.includes("data do agendamento") || n.includes("horário");
-          });
-          const agendadoEm = agendField?.datetime_value || agendField?.value || "";
-
-          flat.push({
-            id: c.id, lic, cli, cel: fieldVal(c, "Telefone Cliente", "telefone")?.replace("+55", "").trim() || "",
-            clas, dem, stat: fieldVal(c, "Situação", "Status") || "Normal",
-            etapa: c.current_phase?.name || "Caixa de entrada",
-            tentativas: [false, false, false, false, false, false, false, false], abertoEm: openedAt,
-            encerrado: isEncerrado, encerradoEm: isEncerrado ? Date.now() : null,
-            horaContato: fHora?.value || "", analista: (getAnalista(c) || "").toUpperCase(),
-            comentario: "", a20: false, a10: false, a4h: false, aAgd: false, a05: false,
-            agendadoEm, _original: c,
-          });
-        });
-      });
-
-      setPhaseIds(pIds);
-
-      // Notify new cards + Slack
-      flat.forEach(c => {
-        const isAnSel = (c.etapa || "").toLowerCase().includes("analista selecionado");
-        if (isAnSel && c.analista && !seenCards.current.has(c.id)) {
-          seenCards.current.add(c.id);
-          slackNotify({ type: "novo_atendimento", analista: c.analista, cliente: c.cli, licenca: c.lic });
-          const isMe = !fAnalista || c.analista === fAnalista;
-          if (isMe) {
-            setAlerta({ tipo: "aviso", titulo: "🎯 NOVO ATENDIMENTO!", cli: c.cli.toUpperCase(), msg: `LICENÇA: ${c.lic}\nNOVO CARD EM ANALISTA SELECIONADO.` });
-            beep(500, 1.2);
-          }
-        }
-      });
-
-      setData(prev => {
-        const idMap = new Map((prev || []).map(i => [i.id, i]));
-        const merged = flat.map(sc => {
-          const local = idMap.get(sc.id);
-          if (local) {
-            const nt = Array.isArray(local.tentativas) ? [...local.tentativas] : [false, false, false, false, false, false, false, false];
-            while (nt.length < 8) nt.push(false);
-            return { ...sc, tentativas: nt, stat: local.stat || "Normal", comentario: local.comentario || sc.comentario, a05: local.a05, a20: local.a20, a4h: local.a4h, aAgd: local.aAgd, agendadoEm: sc.agendadoEm || local.agendadoEm };
-          }
-          return sc;
-        });
-        // Persist to DB
-        upsertMany(merged);
-        return merged;
-      });
-      setLastSync(new Date());
-      if (!silent) toast("✅ Pipefy sincronizado!");
-    } catch (e: any) {
-      if (!silent) toast(`⚠ Erro Pipefy: ${e.message}`);
-    }
-  }, [fAnalista]);
-
-  useEffect(() => {
-    pollRef.current = setInterval(() => fetchData(true), POLL_MS);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [fetchData]);
 
   // Check retries & agendamento alerts every 60s
   useEffect(() => {
     const checkRetries = async () => {
-      try {
-        await supabase.functions.invoke("check-retries");
-      } catch (e) { console.warn("check-retries error:", e); }
+      try { await supabase.functions.invoke("check-retries"); } catch (e) { console.warn("check-retries error:", e); }
     };
     checkRetries();
     const interval = setInterval(checkRetries, 60000);
@@ -478,7 +339,6 @@ export default function Index() {
           }
         }
 
-        // Agendados: alert 5 min before
         const isAgendado = (a.etapa || "").toLowerCase().includes("agendado");
         if (isAgendado && a.horaContato && !a.aAgd) {
           const agd = parseDate(a.horaContato);
@@ -497,7 +357,6 @@ export default function Index() {
         }
       });
       if (changed) {
-        // Persist alert state changes to DB
         const changedItems = n.filter(a => a && !a.encerrado);
         upsertMany(changedItems);
       }
@@ -518,7 +377,7 @@ export default function Index() {
             const idx = prev.findIndex(a => a.id === updated.id);
             if (idx >= 0) {
               const n = [...prev];
-              n[idx] = { ...n[idx], ...updated, _original: n[idx]._original };
+              n[idx] = { ...n[idx], ...updated };
               return n;
             }
             return [updated, ...prev];
@@ -533,15 +392,7 @@ export default function Index() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // ── Pipefy helpers ──
-  const pipefyComment = async (cardId: string, text: string) => {
-    try {
-      await pipefyQuery(`mutation { createComment(input: { card_id: ${cardId}, text: "${text.replace(/"/g, '\\"').replace(/\n/g, '\\n')}" }) { comment { id } } }`);
-    } catch (e: any) { console.warn("Pipefy comment error:", e.message); }
-  };
-
   // ── Contact message modal state ──
-  const [contactModal, setContactModal] = useState<Atendimento | null>(null);
   const buildResolutionHistory = useCallback((a: Atendimento) => {
     const tentativasFeitas = (a.tentativas || [])
       .map((done, index) => done ? `Tentativa ${index + 1}: realizada` : null)
@@ -566,14 +417,8 @@ export default function Index() {
 
   const generateResolutionMessage = useCallback(async (a: Atendimento) => {
     const { data: aiData, error } = await supabase.functions.invoke("openrouter-agent", {
-      body: {
-        task: "resolution_summary",
-        payload: {
-          historico_chamado: buildResolutionHistory(a),
-        },
-      },
+      body: { task: "resolution_summary", payload: { historico_chamado: buildResolutionHistory(a) } },
     });
-
     if (error) throw error;
     return aiData?.data?.mensagem_resolucao as string | undefined;
   }, [buildResolutionHistory]);
@@ -588,89 +433,35 @@ export default function Index() {
       return n;
     });
 
-    // Move card in Pipefy — fuzzy match phase name
-    if (changes.etapa) {
-      const phaseId = phaseIds[changes.etapa] || Object.entries(phaseIds).find(([name]) => name.toLowerCase().includes(changes.etapa!.toLowerCase()))?.[1];
-      if (phaseId) {
-        try {
-          await pipefyQuery(`mutation { moveCardToPhase(input: { card_id: "${id}", destination_phase_id: "${phaseId}" }) { card { id } } }`);
-          const now2 = new Date();
-          const logMsg = `📋 Etapa alterada para: ${changes.etapa} | Analista: ${prev?.analista || fAnalista} | ${now2.toLocaleString("pt-BR")}`;
-          await pipefyComment(id, logMsg);
-        } catch (e: any) { toast(`⚠ Erro Pipefy: ${e.message}`); }
-      }
-
-      // Auto-post first contact message when moving to "Hora primeiro contato"
-      if (changes.etapa.toLowerCase().includes("hora primeiro contato") && prev) {
-        const updated = { ...prev, ...changes };
-        const horaAgora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-        const autoMsg = `Primeira tentativa de contato\n\nNome do cliente: ${updated.cli || "—"}\nCelular: ${updated.cel || "—"}\nHora: ${horaAgora}\nAnalista: ${(updated.analista || fAnalista || "—").toUpperCase()}`;
-        
-        // Save as local comment
-        setData(p => p.map(c => c.id === id ? { ...c, comentario: autoMsg } : c));
-        
-        // Post to Pipefy
-        pipefyComment(id, `📞 ${autoMsg}`);
-        
-        // Copy to clipboard
-        navigator.clipboard.writeText(autoMsg).then(() => {
-          toast("📋 Mensagem copiada e salva no Pipefy!");
-        }).catch(() => {
-          toast("📞 Mensagem salva no Pipefy!");
-        });
-        
-        // Mark first attempt
-        const nt = [...(updated.tentativas || [false,false,false,false,false,false,false,false])];
-        nt[0] = true;
-        setData(p => p.map(c => c.id === id ? { ...c, tentativas: nt } : c));
-
-        // Record primeira_tentativa_em and tentativa_atual in DB
-        await supabase.from("atendimentos").update({
-          primeira_tentativa_em: new Date().toISOString(),
-          tentativa_atual: 1,
-        }).eq("pipefy_card_id", id);
-      }
+    // Auto first-contact handling
+    if (changes.etapa && changes.etapa.toLowerCase().includes("hora primeiro contato") && prev) {
+      const updated = { ...prev, ...changes };
+      const horaAgora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      const autoMsg = `Primeira tentativa de contato\n\nNome do cliente: ${updated.cli || "—"}\nCelular: ${updated.cel || "—"}\nHora: ${horaAgora}\nAnalista: ${(updated.analista || fAnalista || "—").toUpperCase()}`;
+      setData(p => p.map(c => c.id === id ? { ...c, comentario: autoMsg } : c));
+      navigator.clipboard.writeText(autoMsg).then(() => toast("📋 Mensagem copiada!")).catch(() => {});
+      const nt = [...(updated.tentativas || [false,false,false,false,false,false,false,false])];
+      nt[0] = true;
+      setData(p => p.map(c => c.id === id ? { ...c, tentativas: nt } : c));
+      await supabase.from("atendimentos").update({
+        primeira_tentativa_em: new Date().toISOString(),
+        tentativa_atual: 1,
+      }).eq("pipefy_card_id", id);
     }
 
-    // Log encerramento
-    if (changes.encerrado === true) {
-      const now2 = new Date();
-      await pipefyComment(id, `🔒 Atendimento encerrado por ${prev?.analista || fAnalista} em ${now2.toLocaleString("pt-BR")}`);
-    }
-
-    // Auto-fill Pipefy fields when moving to "FINALIZADO EM"
-    if (changes.etapa && changes.etapa.toUpperCase().includes("FINALIZADO")) {
-      try {
-        // Fill: Finalizado em = Concluído, Cliente recebeu = Treinamento, Foi realizado o Treinamento = Não, Foi necessário analista Nível II ou III = Não
-        const updateFieldsMutation = `mutation {
-          updateCardField1: updateCardField(input: { card_id: ${id}, field_id: "finalizado_em", new_value: "Concluído" }) { card { id } }
-          updateCardField2: updateCardField(input: { card_id: ${id}, field_id: "cliente_recebeu", new_value: "Treinamento (Como realizar emissão...)" }) { card { id } }
-          updateCardField3: updateCardField(input: { card_id: ${id}, field_id: "foi_realizado_o_treinamento", new_value: "Não" }) { card { id } }
-          updateCardField4: updateCardField(input: { card_id: ${id}, field_id: "por_que_n_o_recebeu_treinamento", new_value: "deve ser informado" }) { card { id } }
-          updateCardField5: updateCardField(input: { card_id: ${id}, field_id: "foi_necess_rio_ajuda_de_analista_n_vel_ii_ou_iii", new_value: "Não" }) { card { id } }
-        }`;
-        await pipefyQuery(updateFieldsMutation);
-        toast("✅ Campos do Pipefy preenchidos automaticamente!");
-      } catch (e: any) {
-        console.warn("Erro ao preencher campos FINALIZADO:", e.message);
-        toast("⚠ Etapa movida, mas erro ao preencher campos automáticos");
-      }
-    }
-
+    // Auto-resolution message on finalize/conclude
     if (changes.etapa && (changes.etapa.toUpperCase().includes("FINALIZADO") || changes.etapa.toUpperCase().includes("CONCLU"))) {
       try {
         const atendimentoBase = prev ? ({ ...prev, ...changes } as Atendimento) : data.find(c => c.id === id);
         if (atendimentoBase) {
           const mensagemResolucao = await generateResolutionMessage(atendimentoBase);
           if (mensagemResolucao) {
-            await pipefyComment(id, `✅ Mensagem de Resolução: ${mensagemResolucao}`);
             setData(p => p.map(c => c.id === id ? { ...c, comentario: mensagemResolucao } : c));
-            toast("âœ… Mensagem de resoluÃ§Ã£o gerada automaticamente!");
+            toast("✅ Mensagem de resolução gerada!");
           }
         }
       } catch (e: any) {
-        console.warn("Erro ao gerar mensagem de resoluÃ§Ã£o:", e.message);
-        toast("âš  Etapa concluÃ­da, mas a IA nÃ£o gerou a mensagem de resoluÃ§Ã£o");
+        console.warn("Erro IA resolução:", e.message);
       }
     }
   };
@@ -679,19 +470,13 @@ export default function Index() {
     const a = data.find(x => x.id === id);
     if (!a || a.encerrado) return;
     const nt = [...a.tentativas];
-    // Mantém "1º contato" (índice 0) com sua lógica original via fluxo de etapa.
-    // Tentativas 2 a 6: simples toggle, sem efeitos colaterais.
     nt[i] = !nt[i];
     updateCard(id, { tentativas: nt });
   };
 
   const saveComment = async (id: string, text: string) => {
     updateCard(id, { comentario: text });
-    // Sync comment to Pipefy
-    if (text.trim()) {
-      await pipefyComment(id, `💬 ${fAnalista || "Analista"}: ${text}`);
-    }
-    toast("✅ Comentário salvo e sincronizado!");
+    toast("✅ Comentário salvo!");
   };
 
   const copyContactMsg = (a: Atendimento) => {
@@ -702,7 +487,7 @@ export default function Index() {
 
   const addAt = async () => {
     if (!novo.lic || !novo.cli) { toast("⚠ Preencha Licença e Cliente"); return; }
-    const id = Date.now().toString();
+    const id = (crypto as any).randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const newItem: Atendimento = {
       id, ...novo, etapa: ETAPAS[0], tentativas: [false, false, false, false, false, false, false, false],
       abertoEm: Date.now(), encerrado: false, encerradoEm: null, horaContato: novo.horaContato,
@@ -714,12 +499,16 @@ export default function Index() {
     toast("✅ Atendimento criado!");
   };
 
+  const removeOne = async (id: string) => {
+    if (!confirm("Excluir este atendimento permanentemente?")) return;
+    setData(p => p.filter(c => c.id !== id));
+    await deleteAtendimento(id);
+    toast("🗑 Atendimento excluído");
+  };
+
   const clearEncerrados = async () => {
     const encerrados = data.filter(x => x.encerrado);
-    // Delete from DB
-    for (const e of encerrados) {
-      await supabase.from("atendimentos").delete().eq("pipefy_card_id", e.id);
-    }
+    for (const e of encerrados) await deleteAtendimento(e.id);
     setData(p => p.filter(x => !x.encerrado));
     toast("🗑 Encerrados removidos");
   };
@@ -766,15 +555,95 @@ export default function Index() {
   }).length;
   const aVencer = memData.filter(a => a && !a.encerrado && (a.etapa || "").toLowerCase().includes("analista selecionado")).sort((a, b) => (a.abertoEm || 0) - (b.abertoEm || 0)).slice(0, 5);
 
-  // ── Exportar lista (TXT / PDF) ──
-  const exportList = (open: Atendimento[], agnd: Atendimento[], format: "txt" | "pdf" | "csv") => {
+  // ── Exportar planilha (XLSX) — 8 colunas oficiais ──
+  const exportXLSX = (rows: Atendimento[]) => {
+    const aoa: any[][] = [
+      ["Prioridade", "Classificação", "Licença", "Cliente", "Telefone", "Etapa", "Aberto em", "Observação"],
+    ];
+    rows.forEach(a => {
+      const aberto = a.abertoEm ? new Date(a.abertoEm) : null;
+      const obs = (a.comentario || "").replace(/\n\n\[salvo em:[^\]]+\]\s*$/, "").trim();
+      aoa.push([
+        a.dem || "Média",
+        a.clas || "",
+        a.lic || "",
+        a.cli || "",
+        a.cel || "",
+        a.etapa || "",
+        aberto || "",
+        obs,
+      ]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: true });
+    ws["!cols"] = [
+      { wch: 12 }, { wch: 18 }, { wch: 12 }, { wch: 28 }, { wch: 16 }, { wch: 26 }, { wch: 20 }, { wch: 50 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Atendimentos");
+    const fileBase = `atendimentos_${new Date().toISOString().slice(0, 10)}`;
+    XLSX.writeFile(wb, `${fileBase}.xlsx`);
+    toast("📊 Planilha exportada!");
+  };
+
+  // ── Importar planilha (XLSX / CSV) ──
+  const handleImportFile = async (file: File) => {
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array", cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" });
+      if (!rows.length) { toast("⚠ Planilha vazia"); return; }
+      const headers = (rows[0] as any[]).map(h => String(h ?? ""));
+      const map = mapHeaders(headers);
+      if (map.lic === undefined && map.cli === undefined) {
+        toast("⚠ Cabeçalhos não reconhecidos. Use as 8 colunas oficiais.");
+        return;
+      }
+      let ok = 0, skip = 0;
+      const novos: Atendimento[] = [];
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i] as any[];
+        const get = (k: string) => (map[k] !== undefined ? r[map[k]] : "");
+        const lic = String(get("lic") ?? "").trim();
+        const cli = String(get("cli") ?? "").trim();
+        if (!lic && !cli) { skip++; continue; }
+        const demRaw = String(get("dem") ?? "").toLowerCase();
+        const dem = demRaw.includes("alta") ? "Alta" : "Média";
+        const clasRaw = String(get("clas") ?? "").trim();
+        const clas = Object.keys(CHEX).find(k => clasRaw && k.toLowerCase() === clasRaw.toLowerCase()) || clasRaw || "NFe";
+        const etapa = String(get("etapa") ?? "").trim() || "Caixa de entrada";
+        const cel = String(get("cel") ?? "").trim();
+        const obs = String(get("comentario") ?? "").trim();
+        const abertoEm = parseSheetDate(get("abertoEm"));
+        const id = (crypto as any).randomUUID ? crypto.randomUUID() : `${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`;
+        novos.push({
+          id, lic, cli, cel, clas, dem, stat: "Normal", etapa,
+          tentativas: [false, false, false, false, false, false, false, false],
+          abertoEm, encerrado: false, encerradoEm: null,
+          horaContato: "", analista: fAnalista || "",
+          comentario: obs, a20: false, a10: false, a4h: false, aAgd: false, a05: false, agendadoEm: "",
+        });
+        ok++;
+      }
+      if (novos.length) {
+        setData(p => [...novos, ...p]);
+        await upsertMany(novos);
+      }
+      toast(`✅ Importado: ${ok} • Ignorado: ${skip}`, 5000);
+    } catch (e: any) {
+      console.error(e);
+      toast(`⚠ Erro ao importar: ${e.message}`);
+    }
+  };
+
+  // ── Exportar PDF / TXT (mantidos como atalhos) ──
+  const exportList = (open: Atendimento[], agnd: Atendimento[], format: "txt" | "pdf") => {
     const todos = [...open, ...agnd];
     const today = new Date();
     const dateStr = today.toLocaleDateString("pt-BR");
     const timeStr = today.toLocaleTimeString("pt-BR");
     const fileBase = `atendimentos_${today.toISOString().slice(0, 10)}`;
 
-    // agrupar prioridade -> classificacao
     const grupos: Record<string, Record<string, Atendimento[]>> = { Alta: {}, "Média": {} };
     todos.forEach(a => {
       const pr = (a.dem || "Média") === "Alta" ? "Alta" : "Média";
@@ -812,33 +681,6 @@ export default function Index() {
       return;
     }
 
-    if (format === "csv") {
-      const esc = (v: string) => `"${(v || "").replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
-      const headers = ["Prioridade", "Classificação", "Licença", "Cliente", "Telefone", "Etapa", "Aberto em", "Observação"];
-      const lines: string[] = [headers.join(";")];
-      (["Alta", "Média"] as const).forEach(pr => {
-        const classes = Object.keys(grupos[pr]).sort();
-        classes.forEach(cl => {
-          grupos[pr][cl].forEach(a => {
-            const aberto = a.abertoEm ? new Date(a.abertoEm).toLocaleString("pt-BR") : "";
-            lines.push([pr, cl, a.lic, a.cli, a.cel, a.etapa, aberto, a.comentario || ""].map(esc).join(";"));
-          });
-        });
-      });
-      // BOM para acentuação correta no LibreOffice/Excel
-      const csv = "\uFEFF" + lines.join("\r\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url; link.download = `${fileBase}.csv`;
-      link.click();
-      URL.revokeObjectURL(url);
-      toast("📊 CSV exportado (abre no LibreOffice Calc)!");
-      return;
-    }
-
-
-    // PDF
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
@@ -897,7 +739,6 @@ export default function Index() {
     toast("📄 PDF exportado!");
   };
 
-
   return (
     <div className="min-h-screen bg-background p-4 md:p-6 max-w-[1800px] mx-auto">
       {/* Topbar */}
@@ -906,7 +747,7 @@ export default function Index() {
           <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">🎯</div>
           <div>
             <h1 className="text-lg font-bold text-foreground tracking-tight">Central de Atendimentos</h1>
-            <p className="text-xs text-muted-foreground">Gestão de chamados em tempo real • Slack + Pipefy</p>
+            <p className="text-xs text-muted-foreground">Gestão de chamados em tempo real • Slack + Planilha</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -921,7 +762,6 @@ export default function Index() {
           <button onClick={() => setDarkMode(!darkMode)} className="text-sm border border-border rounded-lg px-3 py-1.5 text-foreground hover:bg-muted transition-colors" title="Alternar tema">
             {darkMode ? "☀️" : "🌙"}
           </button>
-          <button onClick={() => fetchData()} className="text-sm border border-border rounded-lg px-3 py-1.5 text-foreground hover:bg-muted transition-colors">↻ Sync</button>
           <div className="font-mono text-sm font-semibold text-primary bg-card border border-border rounded-lg px-3 py-1.5 flex items-center gap-2">
             {now.toLocaleTimeString("pt-BR")}
             <div className="w-2 h-2 rounded-full bg-vintage-green animate-pulse" />
@@ -929,7 +769,7 @@ export default function Index() {
         </div>
       </header>
 
-      {/* KPIs — fontes maiores e coloridas */}
+      {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
         <div className="rounded-2xl p-5 bg-card border-2 border-yellow-500/50 shadow-lg">
           <div className="text-sm uppercase font-extrabold text-yellow-400 tracking-wide">Aguardando</div>
@@ -966,25 +806,12 @@ export default function Index() {
         </div>
       </div>
 
-
       {/* Tabs */}
       <div className="flex gap-1 mb-4 bg-muted rounded-lg p-1 w-fit flex-wrap">
-        <button
-          onClick={() => setActiveTab("list")}
-          className={`text-sm font-semibold px-4 py-1.5 rounded-md transition-colors ${activeTab === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-        >📋 Atendimentos</button>
-        <button
-          onClick={() => setActiveTab("dashboard")}
-          className={`text-sm font-semibold px-4 py-1.5 rounded-md transition-colors ${activeTab === "dashboard" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-        >📊 Dashboard</button>
-        <button
-          onClick={() => setActiveTab("agendamentos")}
-          className={`text-sm font-semibold px-4 py-1.5 rounded-md transition-colors ${activeTab === "agendamentos" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-        >📞 Chamar Cliente</button>
-        <button
-          onClick={() => setActiveTab("emails")}
-          className={`text-sm font-semibold px-4 py-1.5 rounded-md transition-colors ${activeTab === "emails" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-        >📧 Emails</button>
+        <button onClick={() => setActiveTab("list")} className={`text-sm font-semibold px-4 py-1.5 rounded-md transition-colors ${activeTab === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>📋 Atendimentos</button>
+        <button onClick={() => setActiveTab("dashboard")} className={`text-sm font-semibold px-4 py-1.5 rounded-md transition-colors ${activeTab === "dashboard" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>📊 Dashboard</button>
+        <button onClick={() => setActiveTab("agendamentos")} className={`text-sm font-semibold px-4 py-1.5 rounded-md transition-colors ${activeTab === "agendamentos" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>📞 Chamar Cliente</button>
+        <button onClick={() => setActiveTab("emails")} className={`text-sm font-semibold px-4 py-1.5 rounded-md transition-colors ${activeTab === "emails" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>📧 Emails</button>
       </div>
 
       {activeTab === "dashboard" ? (
@@ -995,7 +822,7 @@ export default function Index() {
         <EmailsPanel />
       ) : (
       <>
-      {/* Filters */}
+      {/* Filters + actions */}
       <div className="flex flex-wrap gap-2 mb-4 items-center">
         <input
           type="text"
@@ -1014,27 +841,39 @@ export default function Index() {
           <option value="Média">🟡 Média</option>
         </select>
         <button onClick={clearEncerrados} className="text-sm text-destructive bg-destructive/10 border border-transparent rounded-lg px-3 py-2 font-semibold hover:bg-destructive/20 transition-colors">🗑 Limpar enc.</button>
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = ""; }}
+        />
         <button
-          onClick={() => exportList(filtered, agendados, "txt")}
-          className="text-sm text-blue-300 bg-blue-500/10 border border-blue-500/30 rounded-lg px-3 py-2 font-semibold hover:bg-blue-500/20 transition-colors"
-          title="Exportar para bloco de notas"
-        >📝 TXT</button>
+          onClick={() => importInputRef.current?.click()}
+          className="text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-2 font-semibold hover:bg-emerald-500/20 transition-colors"
+          title="Importar planilha .xlsx ou .csv"
+        >📥 Importar planilha</button>
+        <button
+          onClick={() => exportXLSX([...filtered, ...agendados])}
+          className="text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-2 font-semibold hover:bg-emerald-500/20 transition-colors"
+          title="Exportar planilha .xlsx"
+        >📊 Exportar planilha</button>
         <button
           onClick={() => exportList(filtered, agendados, "pdf")}
           className="text-sm text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2 font-semibold hover:bg-rose-500/20 transition-colors"
           title="Exportar para PDF"
         >📄 PDF</button>
         <button
-          onClick={() => exportList(filtered, agendados, "csv")}
-          className="text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-2 font-semibold hover:bg-emerald-500/20 transition-colors"
-          title="Exportar CSV (abre no LibreOffice Calc)"
-        >📊 LibreOffice</button>
+          onClick={() => exportList(filtered, agendados, "txt")}
+          className="text-sm text-blue-300 bg-blue-500/10 border border-blue-500/30 rounded-lg px-3 py-2 font-semibold hover:bg-blue-500/20 transition-colors"
+          title="Exportar para bloco de notas"
+        >📝 TXT</button>
         <div className="ml-auto text-sm text-muted-foreground font-medium">
-          📋 <span className="text-foreground font-bold">{filtered.length}</span> registro(s) {lastSync && `• Sync: ${lastSync.toLocaleTimeString("pt-BR")}`}
+          📋 <span className="text-foreground font-bold">{filtered.length}</span> registro(s)
         </div>
       </div>
 
-      {/* Lista em formato de tabela (linhas) — agrupada por Prioridade (Alta → Média) */}
+      {/* Lista em formato de tabela */}
       {(() => {
         const finalizados = data.filter(a => {
           if (!a || !a.encerrado) return false;
@@ -1077,6 +916,7 @@ export default function Index() {
                     <th className="text-left px-3 py-2.5 font-bold border-b-2 border-primary/40">Etapa</th>
                     <th className="text-left px-3 py-2.5 font-bold border-b-2 border-primary/40">Aberto em</th>
                     <th className="text-left px-3 py-2.5 font-bold border-b-2 border-primary/40">Obs</th>
+                    <th className="px-2 py-2.5 border-b-2 border-primary/40"></th>
                     <th className="px-2 py-2.5 border-b-2 border-primary/40"></th>
                   </tr>
                 </thead>
@@ -1142,11 +982,18 @@ export default function Index() {
                             <div className={`font-mono text-sm font-black ${tCls}`}>{fmt(el)}</div>
                           </td>
                           <td className="px-3 py-2 text-muted-foreground truncate max-w-[200px]">{obsResumo(a.comentario || "")}</td>
+                          <td className="px-1 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => removeOne(a.id)}
+                              className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/15 rounded-md px-2 py-1 text-sm transition-colors"
+                              title="Excluir atendimento"
+                            >🗑</button>
+                          </td>
                           <td className="px-2 py-2 text-muted-foreground text-xs">{isExp ? "▲" : "▼"}</td>
                         </tr>
                         {isExp && (
                           <tr className="bg-background/60">
-                            <td colSpan={10} className="p-3">
+                            <td colSpan={11} className="p-3">
                               <AttendanceCard
                                 item={a}
                                 index={i}
@@ -1165,7 +1012,7 @@ export default function Index() {
                     );
                   })}
                   {linhas.length === 0 && (
-                    <tr><td colSpan={10} className="text-center py-12 text-muted-foreground font-semibold">Nenhum atendimento no momento.</td></tr>
+                    <tr><td colSpan={11} className="text-center py-12 text-muted-foreground font-semibold">Nenhum atendimento no momento.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1173,7 +1020,6 @@ export default function Index() {
           </div>
         );
       })()}
-
 
       {/* New attendance form */}
       <div className="bg-card border border-border rounded-xl p-5 mb-6">
@@ -1242,7 +1088,7 @@ export default function Index() {
             />
             <div className="flex gap-2 justify-end mt-3">
               <button onClick={() => setComent(null)} className="text-sm px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors">Cancelar</button>
-              <button onClick={() => { saveComment(coment.id, coment.text); setComent(null); }} className="text-sm px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity">Salvar + Pipefy</button>
+              <button onClick={() => { saveComment(coment.id, coment.text); setComent(null); }} className="text-sm px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity">Salvar</button>
             </div>
           </div>
         </div>
@@ -1287,32 +1133,6 @@ export default function Index() {
             <div className="flex gap-2 justify-end border-t border-border pt-3">
               <button onClick={() => setModEdit(null)} className="text-sm px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors">Cancelar</button>
               <button onClick={() => { updateCard(modEdit.id, { ...modEdit }); setModEdit(null); toast("✅ Atualizado!"); }} className="text-sm px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity">Salvar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Contact Message Modal - Auto opens when moving to Hora primeiro contato */}
-      {contactModal && (
-        <div className="modal-overlay" onClick={() => setContactModal(null)}>
-          <div className="bg-card rounded-2xl p-6 max-w-md w-[90%] border border-border shadow-medium animate-fade-in" onClick={e => e.stopPropagation()}>
-            <h3 className="text-sm font-bold text-accent mb-1">📲 1º Contato — Mensagem para copiar</h3>
-            <p className="text-xs text-vintage-green font-semibold mb-3">✅ Etapa movida para "Hora primeiro contato - TMR" no Pipefy</p>
-            <div className="bg-muted rounded-lg p-3 text-sm text-foreground whitespace-pre-line mb-4 border border-border font-mono">
-              {`Primeira tentativa de contato\n\nNome do cliente: ${contactModal.cli}\nCelular: ${contactModal.cel}\nLicença: ${contactModal.lic}\nHora: ${now.toLocaleTimeString("pt-BR")}\nAnalista: ${contactModal.analista || fAnalista}`}
-            </div>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setContactModal(null)} className="text-sm px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors">Fechar</button>
-              <button
-                onClick={async () => {
-                  const text = `Primeira tentativa de contato\n\nNome do cliente: ${contactModal.cli}\nCelular: ${contactModal.cel}\nLicença: ${contactModal.lic}\nHora: ${now.toLocaleTimeString("pt-BR")}\nAnalista: ${contactModal.analista || fAnalista}`;
-                  navigator.clipboard.writeText(text);
-                  await pipefyComment(contactModal.id, text);
-                  toast("📋 Copiado e salvo no Pipefy!");
-                  setContactModal(null);
-                }}
-                className="text-sm px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity"
-              >📋 Copiar e Salvar no Pipefy</button>
             </div>
           </div>
         </div>
